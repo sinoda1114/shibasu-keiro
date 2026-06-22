@@ -54,6 +54,8 @@ jobs:
         run: pnpm test --run
 
       - name: Build
+        env:
+          TURSO_DATABASE_URL: "file::memory:"
         run: pnpm build
 
       - name: Audit dependencies
