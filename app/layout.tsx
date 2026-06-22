@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css'
+import '@mantine/dates/styles.css'
 import '@mantine/notifications/styles.css'
 import type { Metadata, Viewport } from 'next'
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core'
