@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   Container,
   Stack,
@@ -11,56 +12,75 @@ import {
   Divider,
   Badge,
   Alert,
+  Loader,
+  Center,
   rem,
 } from '@mantine/core'
 import { IconArrowLeft, IconAlertCircle, IconBus } from '@tabler/icons-react'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { Suspense } from 'react'
 
-const MOCK_RESULTS = [
-  {
-    tripId: 't1',
-    routeShortName: '基幹2',
-    headsign: '名古屋駅',
-    departureTime: '18:12',
-    arrivalTime: '18:34',
-    minutesUntil: 8,
-    rideMinutes: 22,
-  },
-  {
-    tripId: 't2',
-    routeShortName: '基幹2',
-    headsign: '名古屋駅',
-    departureTime: '18:27',
-    arrivalTime: '18:49',
-    minutesUntil: 23,
-    rideMinutes: 22,
-  },
-  {
-    tripId: 't3',
-    routeShortName: '基幹2',
-    headsign: '名古屋駅',
-    departureTime: '18:45',
-    arrivalTime: '19:07',
-    minutesUntil: 41,
-    rideMinutes: 22,
-  },
-]
-
-const MOCK_LAST = {
-  tripId: 'tlast',
-  routeShortName: '基幹2',
-  headsign: '名古屋駅',
-  departureTime: '23:10',
-  arrivalTime: '23:32',
-  minutesUntil: null,
-  rideMinutes: 22,
+interface DirectRouteResult {
+  tripId: string
+  routeId: string
+  headsign: string | null
+  departureStopName: string
+  arrivalStopName: string
+  departureTime: string
+  arrivalTime: string
+  departureSeconds: number
+  arrivalSeconds: number
 }
 
 const DAY_TYPE_LABELS: Record<string, string> = {
   weekday: '平日',
   saturday: '土曜',
   holiday: '休日',
+}
+
+function formatYYYYMMDD(d: Date): string {
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}${m}${day}`
+}
+
+function getDayTypeDate(dayType: string): string {
+  const today = new Date()
+  const jst = new Date(today.getTime() + 9 * 60 * 60 * 1000)
+  const dow = jst.getUTCDay() // 0=日, 1=月, ..., 6=土
+
+  if (dayType === 'saturday') {
+    const daysUntilSat = dow === 6 ? 0 : (6 - dow)
+    const sat = new Date(jst.getTime() + daysUntilSat * 86400000)
+    return formatYYYYMMDD(sat)
+  }
+  if (dayType === 'holiday') {
+    const daysUntilSun = dow === 0 ? 0 : (7 - dow)
+    const sun = new Date(jst.getTime() + daysUntilSun * 86400000)
+    return formatYYYYMMDD(sun)
+  }
+  // weekday: 今日が平日ならそのまま、土日なら次の月曜
+  if (dow === 0) return formatYYYYMMDD(new Date(jst.getTime() + 86400000))
+  if (dow === 6) return formatYYYYMMDD(new Date(jst.getTime() + 2 * 86400000))
+  return formatYYYYMMDD(jst)
+}
+
+function timeToSeconds(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 3600 + m * 60
+}
+
+function calcMinutesUntil(depSec: number): number | null {
+  const now = new Date()
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  const nowSec = jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
+  const diff = Math.floor((depSec - nowSec) / 60)
+  return diff >= 0 ? diff : null
+}
+
+function calcRideMinutes(depSec: number, arrSec: number): number {
+  return Math.round((arrSec - depSec) / 60)
 }
 
 function SearchResultContent() {
@@ -71,9 +91,40 @@ function SearchResultContent() {
   const to = searchParams.get('to') ?? ''
   const dayType = searchParams.get('dayType') ?? 'weekday'
   const time = searchParams.get('time') ?? ''
+  const timeMode = searchParams.get('timeMode') ?? 'now'
 
-  const hasResults = MOCK_RESULTS.length > 0
-  const [nextBus, ...otherBuses] = MOCK_RESULTS
+  const [results, setResults] = useState<DirectRouteResult[]>([])
+  const [loading, setLoading] = useState(!!(from && to))
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!from || !to) return
+    const date = getDayTypeDate(dayType)
+    const controller = new AbortController()
+    fetch(
+      `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=nagoya_city_bus`,
+      { signal: controller.signal }
+    )
+      .then((r) => r.json())
+      .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string }) => {
+        if (json.success) setResults(json.data ?? [])
+        else setError(json.error ?? '検索に失敗しました')
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setError('通信エラーが発生しました')
+        }
+      })
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [from, to, dayType])
+
+  const timeSeconds = timeToSeconds(time || '00:00')
+  const upcoming = results.filter((r) => r.departureSeconds >= timeSeconds)
+  const lastBus = results.length > 0 ? results[results.length - 1] : null
+
+  const [nextBus, ...restBuses] = upcoming
+  const otherBuses = restBuses.slice(0, 4)
 
   return (
     <Container size="sm" py="md" px="md">
@@ -111,8 +162,27 @@ function SearchResultContent() {
           </Group>
         </Stack>
 
+        {/* ローディング */}
+        {loading && (
+          <Center py="xl">
+            <Loader size="md" />
+          </Center>
+        )}
+
+        {/* エラー */}
+        {!loading && error && (
+          <Alert
+            icon={<IconAlertCircle size={rem(16)} />}
+            title="エラーが発生しました"
+            color="red"
+            radius="md"
+          >
+            {error}
+          </Alert>
+        )}
+
         {/* 結果なし */}
-        {!hasResults && (
+        {!loading && !error && upcoming.length === 0 && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
             title="バスが見つかりませんでした"
@@ -124,25 +194,25 @@ function SearchResultContent() {
         )}
 
         {/* 次のバス（強調表示） */}
-        {hasResults && nextBus && (
+        {!loading && !error && nextBus && (
           <Stack gap="xs">
             <Text size="sm" fw={700} c="blue.7">
               次に乗れるバス
             </Text>
             <SearchResultCard
-              routeShortName={nextBus.routeShortName}
-              headsign={nextBus.headsign}
+              routeShortName={nextBus.routeId}
+              headsign={nextBus.headsign ?? ''}
               departureTime={nextBus.departureTime}
               arrivalTime={nextBus.arrivalTime}
-              minutesUntil={nextBus.minutesUntil}
-              rideMinutes={nextBus.rideMinutes}
+              minutesUntil={timeMode === 'now' ? calcMinutesUntil(nextBus.departureSeconds) : null}
+              rideMinutes={calcRideMinutes(nextBus.departureSeconds, nextBus.arrivalSeconds)}
               isNext
             />
           </Stack>
         )}
 
         {/* 2本目以降の候補 */}
-        {hasResults && otherBuses.length > 0 && (
+        {!loading && !error && otherBuses.length > 0 && (
           <Stack gap="xs">
             <Text size="sm" fw={600} c="gray.7">
               その後のバス
@@ -151,12 +221,12 @@ function SearchResultContent() {
               {otherBuses.map((bus) => (
                 <SearchResultCard
                   key={bus.tripId}
-                  routeShortName={bus.routeShortName}
-                  headsign={bus.headsign}
+                  routeShortName={bus.routeId}
+                  headsign={bus.headsign ?? ''}
                   departureTime={bus.departureTime}
                   arrivalTime={bus.arrivalTime}
-                  minutesUntil={bus.minutesUntil}
-                  rideMinutes={bus.rideMinutes}
+                  minutesUntil={timeMode === 'now' ? calcMinutesUntil(bus.departureSeconds) : null}
+                  rideMinutes={calcRideMinutes(bus.departureSeconds, bus.arrivalSeconds)}
                 />
               ))}
             </Stack>
@@ -164,16 +234,16 @@ function SearchResultContent() {
         )}
 
         {/* 終バス */}
-        {hasResults && (
+        {!loading && !error && lastBus && (
           <>
             <Divider label="終バス" labelPosition="left" c="dimmed" />
             <SearchResultCard
-              routeShortName={MOCK_LAST.routeShortName}
-              headsign={MOCK_LAST.headsign}
-              departureTime={MOCK_LAST.departureTime}
-              arrivalTime={MOCK_LAST.arrivalTime}
-              minutesUntil={MOCK_LAST.minutesUntil}
-              rideMinutes={MOCK_LAST.rideMinutes}
+              routeShortName={lastBus.routeId}
+              headsign={lastBus.headsign ?? ''}
+              departureTime={lastBus.departureTime}
+              arrivalTime={lastBus.arrivalTime}
+              minutesUntil={null}
+              rideMinutes={calcRideMinutes(lastBus.departureSeconds, lastBus.arrivalSeconds)}
               isLast
             />
           </>

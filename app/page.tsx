@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Container,
@@ -16,23 +16,11 @@ import {
   Card,
   Divider,
   Box,
+  Loader,
   rem,
 } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
 import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
-
-const MOCK_STOPS = [
-  '栄',
-  '上浜町',
-  '名古屋駅',
-  '大曽根',
-  '金山',
-  '熱田神宮前',
-  '吹上',
-  '御器所',
-  '八事日赤',
-  '星ヶ丘',
-]
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'now' | 'specify'
@@ -51,19 +39,69 @@ function getNowTime(): string {
   return `${hh}:${mm}`
 }
 
+async function fetchStopSuggestions(query: string): Promise<string[]> {
+  if (query.length === 0) return []
+  const res = await fetch(
+    `/api/stops/search?q=${encodeURIComponent(query)}&provider=nagoya_city_bus`
+  )
+  if (!res.ok) return []
+  const json = await res.json()
+  if (!json.success) return []
+  return (json.data as { stopName: string }[]).map((s) => s.stopName)
+}
+
 export default function SearchPage() {
   const router = useRouter()
 
   const [fromStop, setFromStop] = useState('')
   const [toStop, setToStop] = useState('')
+  const [fromData, setFromData] = useState<string[]>([])
+  const [toData, setToData] = useState<string[]>([])
+  const [fromLoading, setFromLoading] = useState(false)
+  const [toLoading, setToLoading] = useState(false)
   const [dayTypeAuto, setDayTypeAuto] = useState(true)
   const [dayType, setDayType] = useState<DayType>(getTodayDayType())
   const [timeMode, setTimeMode] = useState<TimeMode>('now')
   const [specifiedTime, setSpecifiedTime] = useState(getNowTime())
 
+  const fromDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const toDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleFromChange = (value: string) => {
+    setFromStop(value)
+    if (fromDebounceRef.current) clearTimeout(fromDebounceRef.current)
+    if (value.length === 0) {
+      setFromData([])
+      return
+    }
+    setFromLoading(true)
+    fromDebounceRef.current = setTimeout(async () => {
+      const suggestions = await fetchStopSuggestions(value)
+      setFromData(suggestions)
+      setFromLoading(false)
+    }, 300)
+  }
+
+  const handleToChange = (value: string) => {
+    setToStop(value)
+    if (toDebounceRef.current) clearTimeout(toDebounceRef.current)
+    if (value.length === 0) {
+      setToData([])
+      return
+    }
+    setToLoading(true)
+    toDebounceRef.current = setTimeout(async () => {
+      const suggestions = await fetchStopSuggestions(value)
+      setToData(suggestions)
+      setToLoading(false)
+    }, 300)
+  }
+
   const handleSwap = () => {
     setFromStop(toStop)
     setToStop(fromStop)
+    setFromData(toData)
+    setToData(fromData)
   }
 
   const handleSearch = () => {
@@ -75,6 +113,7 @@ export default function SearchPage() {
       to: toStop,
       dayType: resolvedDayType,
       time: resolvedTime,
+      timeMode,
     })
     router.push(`/search?${params.toString()}`)
   }
@@ -100,13 +139,14 @@ export default function SearchPage() {
               <Autocomplete
                 label="出発バス停"
                 placeholder="例: 栄"
-                data={MOCK_STOPS}
+                data={fromData}
                 value={fromStop}
-                onChange={setFromStop}
+                onChange={handleFromChange}
                 maxDropdownHeight={200}
                 radius="md"
                 size="md"
                 comboboxProps={{ shadow: 'md' }}
+                rightSection={fromLoading ? <Loader size="xs" /> : undefined}
               />
 
               {/* 入れ替えボタン */}
@@ -131,13 +171,14 @@ export default function SearchPage() {
               <Autocomplete
                 label="到着バス停"
                 placeholder="例: 上浜町"
-                data={MOCK_STOPS}
+                data={toData}
                 value={toStop}
-                onChange={setToStop}
+                onChange={handleToChange}
                 maxDropdownHeight={200}
                 radius="md"
                 size="md"
                 comboboxProps={{ shadow: 'md' }}
+                rightSection={toLoading ? <Loader size="xs" /> : undefined}
               />
             </Stack>
 
