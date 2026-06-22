@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, inArray, lt, isNotNull } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
