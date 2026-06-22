@@ -1,0 +1,35 @@
+/**
+ * GTFS共通ユーティリティ
+ */
+
+/**
+ * GTFS時刻文字列 "25:30:00" → 秒数 91800
+ */
+export function gtfsTimeToSeconds(time: string): number {
+  const [h, m, s] = time.split(':').map(Number)
+  return h * 3600 + m * 60 + s
+}
+
+/**
+ * 秒数 → "HH:MM" 表示 (25:30:00 → "01:30"の翌日表示)
+ */
+export function secondsToHHMM(seconds: number): string {
+  const h = Math.floor(seconds / 3600) % 24
+  const m = Math.floor((seconds % 3600) / 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/**
+ * 現在時刻を0時起点秒数に変換
+ */
+export function nowToSeconds(): number {
+  const now = new Date()
+  return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+}
+
+/**
+ * UUID生成（crypto.randomUUID）
+ */
+export function generateId(): string {
+  return crypto.randomUUID()
+}

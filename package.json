@@ -12,10 +12,14 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "gtfs:import": "npx tsx --env-file=.env.local scripts/gtfs/index.ts",
+    "gtfs:check": "npx tsx --env-file=.env.local scripts/check-db.ts",
+    "db:reset": "npx tsx --env-file=.env.local scripts/reset-db.ts"
   },
   "dependencies": {
     "@libsql/client": "0.15.4",
+    "csv-parse": "5.6.0",
     "@mantine/core": "7.17.4",
     "@mantine/form": "7.17.4",
     "@mantine/hooks": "7.17.4",
@@ -29,6 +33,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.6.3",
+    "tsx": "4.19.4",
     "drizzle-kit": "0.31.1",
     "@testing-library/react": "16.3.0",
     "@types/node": "^20",
