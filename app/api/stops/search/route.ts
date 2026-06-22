@@ -4,7 +4,6 @@ import { db } from '@/lib/db/client'
 import { busStops, gtfsVersions } from '@/lib/db/schema'
 
 export interface StopSearchResult {
-  stopId: string
   stopName: string
 }
 
@@ -17,9 +16,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: [] })
   }
 
-  // active バージョンの bus_stops からプレフィックス検索
+  // active バージョンの bus_stops からプレフィックス検索（同名停留所を名前でまとめる）
   const rows = await db
-    .select({ stopId: busStops.stopId, stopName: busStops.stopName })
+    .select({ stopName: busStops.stopName })
     .from(busStops)
     .innerJoin(gtfsVersions, and(
       eq(busStops.gtfsVersionId, gtfsVersions.id),
@@ -31,12 +30,11 @@ export async function GET(req: NextRequest) {
         like(busStops.stopName, `${q}%`)
       )
     )
-    .groupBy(busStops.stopName, busStops.stopId)
+    .groupBy(busStops.stopName)
     .orderBy(sql`length(${busStops.stopName})`, busStops.stopName)
     .limit(20)
 
   const data: StopSearchResult[] = rows.map((r) => ({
-    stopId: r.stopId,
     stopName: r.stopName,
   }))
 

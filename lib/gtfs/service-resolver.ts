@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gte, lte } from 'drizzle-orm'
 import { db } from '../db/client'
 import { gtfsVersions, gtfsCalendar, gtfsCalendarDates } from '../db/schema'
 
@@ -38,7 +38,9 @@ export async function resolveServiceIds(
     .where(
       and(
         eq(gtfsCalendar.providerId, providerId),
-        eq(gtfsCalendar.gtfsVersionId, gtfsVersionId)
+        eq(gtfsCalendar.gtfsVersionId, gtfsVersionId),
+        lte(gtfsCalendar.startDate, dateStr),
+        gte(gtfsCalendar.endDate, dateStr)
       )
     )
 
@@ -85,8 +87,10 @@ export function secondsToHHMM(seconds: number): string {
 
 export function todayYYYYMMDD(): string {
   const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
+  // Vercel は UTC で動作するため JST (UTC+9) に変換
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  const y = jst.getUTCFullYear()
+  const m = String(jst.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(jst.getUTCDate()).padStart(2, '0')
   return `${y}${m}${d}`
 }

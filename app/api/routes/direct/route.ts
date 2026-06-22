@@ -36,6 +36,13 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  if (!/^\d{8}$/.test(dateStr)) {
+    return NextResponse.json(
+      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
+      { status: 400 }
+    )
+  }
+
   const versionId = await getActiveVersionId(providerId)
   if (!versionId) {
     return NextResponse.json(
