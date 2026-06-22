@@ -4,7 +4,6 @@ import {
   busStops, busRoutes, busTrips, busStopTimes,
   gtfsCalendar, gtfsCalendarDates,
 } from '../lib/db/schema'
-import { sql } from 'drizzle-orm'
 
 async function main() {
   console.log('Clearing all GTFS data...')
