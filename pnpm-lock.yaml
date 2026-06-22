@@ -1,10 +1,5 @@
 lockfileVersion: '9.0'
 
-neverBuiltDependencies:
-  - esbuild
-  - sharp
-  - unrs-resolver
-
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
