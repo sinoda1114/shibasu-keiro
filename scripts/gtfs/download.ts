@@ -53,7 +53,6 @@ async function extractZipJs(buf: Buffer, destDir: string): Promise<void> {
 
     const compression = buf.readUInt16LE(offset + 8)
     const compressedSize = buf.readUInt32LE(offset + 18)
-    const uncompressedSize = buf.readUInt32LE(offset + 22)
     const fileNameLen = buf.readUInt16LE(offset + 26)
     const extraLen = buf.readUInt16LE(offset + 28)
     const fileName = buf.slice(offset + 30, offset + 30 + fileNameLen).toString('utf8')

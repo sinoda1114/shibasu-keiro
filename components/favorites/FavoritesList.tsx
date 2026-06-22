@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
@@ -31,12 +31,8 @@ const MOCK_ROUTES: Array<{ from: string; to: string }> = [
 
 export function FavoritesList() {
   const router = useRouter()
-  const [routes, setRoutes] = useState<FavoriteRoute[]>([])
+  const [routes, setRoutes] = useState<FavoriteRoute[]>(() => getFavorites())
   const [mockIndex, setMockIndex] = useState(0)
-
-  useEffect(() => {
-    setRoutes(getFavorites())
-  }, [])
 
   const handleReverse = useCallback((id: string) => {
     reverseFavorite(id)
