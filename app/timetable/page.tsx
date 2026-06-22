@@ -1,9 +1,19 @@
-import { Container, Title } from '@mantine/core'
+import { Suspense } from 'react'
+import { Container, Loader, Center } from '@mantine/core'
+import { TimetablePageContent } from './TimetablePageContent'
 
 export default function TimetablePage() {
   return (
     <Container size="sm" py="md">
-      <Title order={2}>時刻表</Title>
+      <Suspense
+        fallback={
+          <Center py="xl">
+            <Loader size="sm" />
+          </Center>
+        }
+      >
+        <TimetablePageContent />
+      </Suspense>
     </Container>
   )
 }
