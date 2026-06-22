@@ -62,9 +62,14 @@ async function batchInsert<T extends object>(
 }
 
 /**
- * GTFSデータをTursoに取り込む
+ * GTFSデータをTursoに取り込む。完了後も status は staging のまま（activate は呼び出し側で行う）。
+ * 返り値: 新しい gtfsVersionId
  */
-export async function importGtfs(gtfsDir: string, versionName: string): Promise<void> {
+export async function importGtfs(
+  gtfsDir: string,
+  versionName: string,
+  sourceHash?: string
+): Promise<string> {
   const versionId = generateId()
   const jobId = generateId()
   const now = new Date().toISOString()
@@ -102,12 +107,13 @@ export async function importGtfs(gtfsDir: string, versionName: string): Promise<
   })
 
   try {
-    // バージョン登録
+    // バージョン登録（status は staging のまま）
     await db.insert(gtfsVersions).values({
       id: versionId,
       providerId: PROVIDER_ID,
       versionName,
       sourceUrl,
+      sourceHash: sourceHash ?? null,
       status: 'staging',
       createdAt: now,
     })
@@ -229,19 +235,14 @@ export async function importGtfs(gtfsDir: string, versionName: string): Promise<
     }
     console.log(` ${calendarDates.length} calendar_dates`)
 
-    // バージョンをactiveに更新
-    await db
-      .update(gtfsVersions)
-      .set({ status: 'active', importedAt: new Date().toISOString() })
-      .where(eq(gtfsVersions.id, versionId))
-
-    // ジョブ完了
+    // ジョブ完了（status は staging のまま — activate は呼び出し側で行う）
     await db
       .update(gtfsImportJobs)
       .set({ status: 'completed', finishedAt: new Date().toISOString() })
       .where(eq(gtfsImportJobs.id, jobId))
 
-    console.log('\n✓ Import completed successfully!')
+    console.log('\n✓ Import completed (staging). Ready to activate.')
+    return versionId
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await db

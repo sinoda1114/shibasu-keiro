@@ -1,0 +1,53 @@
+# GTFS 自動更新ワークフロー
+#
+# スケジュール: 毎週月曜 02:00 JST（= 日曜 17:00 UTC）
+# 手動実行:     GitHub Actions UI から "Run workflow" で起動可能
+# 動作:
+#   1. ETag/Last-Modified で更新チェック（変更なしならスキップ）
+#   2. 変更あれば staging として取込 → 検証 → active 昇格 → 旧版クリーンアップ
+#
+# 必要シークレット（Settings > Secrets and variables > Actions）:
+#   TURSO_DATABASE_URL  : libsql://xxxxx.turso.io
+#   TURSO_AUTH_TOKEN    : eyJhbGci...
+#   NAGOYA_GTFS_URL     : 名古屋市GTFS-JP ZIPのURL
+
+name: GTFS Auto Update
+
+on:
+  schedule:
+    - cron: "0 17 * * 0"  # 毎週日曜 17:00 UTC = 月曜 02:00 JST
+  workflow_dispatch:        # 手動実行
+
+concurrency:
+  group: gtfs-update
+  cancel-in-progress: false  # 実行中のインポートを強制キャンセルしない
+
+jobs:
+  update:
+    name: Check and import GTFS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run GTFS update
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          NAGOYA_GTFS_URL: ${{ secrets.NAGOYA_GTFS_URL }}
+        run: pnpm tsx scripts/gtfs/index.ts
