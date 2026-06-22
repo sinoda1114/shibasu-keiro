@@ -4,13 +4,24 @@ import '@mantine/notifications/styles.css'
 import type { Metadata, Viewport } from 'next'
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core'
 import { AppShellLayout } from '@/components/layout/AppShellLayout'
+import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration'
 
 export const metadata: Metadata = {
   title: '市バスかんたん時刻表',
   description: '名古屋市バスの直通ルート検索・時刻表確認アプリ',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '市バス時刻表',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export const viewport: Viewport = {
+  themeColor: '#228be6',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -27,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MantineProvider>
           <AppShellLayout>{children}</AppShellLayout>
         </MantineProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )
