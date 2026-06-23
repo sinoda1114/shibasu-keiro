@@ -9,7 +9,6 @@ import {
   Text,
   Autocomplete,
   SegmentedControl,
-  Radio,
   Group,
   Button,
   ActionIcon,
@@ -26,7 +25,7 @@ import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 
-type DayType = 'weekday' | 'saturday' | 'holiday'
+type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'now' | 'depart' | 'arrive'
 
 function getTodayDayType(): DayType {
@@ -120,8 +119,7 @@ function SearchPageContent() {
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
-  const [dayTypeAuto, setDayTypeAuto] = useState(true)
-  const [dayType, setDayType] = useState<DayType>(getTodayDayType())
+  const [dayType, setDayType] = useState<DayType>('auto')
   const [timeMode, setTimeMode] = useState<TimeMode>('now')
   const [specifiedTime, setSpecifiedTime] = useState(getNowTime())
 
@@ -169,7 +167,7 @@ function SearchPageContent() {
 
   const handleSearch = () => {
     if (!fromStop || !toStop) return
-    const resolvedDayType = dayTypeAuto ? getTodayDayType() : dayType
+    const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
     const resolvedTime = timeMode === 'now' ? getNowTime() : specifiedTime
     const params = new URLSearchParams({
       from: fromStop,
@@ -261,31 +259,18 @@ function SearchPageContent() {
                 <Text size="sm" fw={600} c="gray.7">
                   ダイヤ区分
                 </Text>
-                <Radio
-                  label="自動（今日の曜日）"
-                  checked={dayTypeAuto}
-                  onChange={() => setDayTypeAuto(true)}
-                  size="sm"
+                <SegmentedControl
+                  value={dayType}
+                  onChange={(v) => setDayType(v as DayType)}
+                  data={[
+                    { label: '自動', value: 'auto' },
+                    { label: '平日', value: 'weekday' },
+                    { label: '土曜', value: 'saturday' },
+                    { label: '休日', value: 'holiday' },
+                  ]}
+                  radius="md"
+                  fullWidth
                 />
-                <Radio
-                  label="手動で選択"
-                  checked={!dayTypeAuto}
-                  onChange={() => setDayTypeAuto(false)}
-                  size="sm"
-                />
-                {!dayTypeAuto && (
-                  <SegmentedControl
-                    value={dayType}
-                    onChange={(v) => setDayType(v as DayType)}
-                    data={[
-                      { label: '平日', value: 'weekday' },
-                      { label: '土曜', value: 'saturday' },
-                      { label: '休日', value: 'holiday' },
-                    ]}
-                    radius="md"
-                    fullWidth
-                  />
-                )}
               </Stack>
 
               <Divider />
@@ -295,26 +280,17 @@ function SearchPageContent() {
                 <Text size="sm" fw={600} c="gray.7">
                   時刻
                 </Text>
-                <Stack gap={4}>
-                  <Radio
-                    label="いま出る"
-                    checked={timeMode === 'now'}
-                    onChange={() => setTimeMode('now')}
-                    size="sm"
-                  />
-                  <Radio
-                    label="出発時刻を指定"
-                    checked={timeMode === 'depart'}
-                    onChange={() => setTimeMode('depart')}
-                    size="sm"
-                  />
-                  <Radio
-                    label="到着時刻を指定"
-                    checked={timeMode === 'arrive'}
-                    onChange={() => setTimeMode('arrive')}
-                    size="sm"
-                  />
-                </Stack>
+                <SegmentedControl
+                  value={timeMode}
+                  onChange={(v) => setTimeMode(v as TimeMode)}
+                  data={[
+                    { label: 'いま出る', value: 'now' },
+                    { label: '出発時刻', value: 'depart' },
+                    { label: '到着時刻', value: 'arrive' },
+                  ]}
+                  radius="md"
+                  fullWidth
+                />
                 {timeMode !== 'now' && (
                   <TimePickerInput value={specifiedTime} onChange={setSpecifiedTime} />
                 )}
