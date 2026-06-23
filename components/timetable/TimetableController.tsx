@@ -1,178 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  Stack,
-  Title,
-  SegmentedControl,
-  Select,
-  Text,
-} from '@mantine/core'
+import { useEffect, useReducer, useState } from 'react'
+import { Stack, Title, SegmentedControl, Select, Text, Loader, Center, Alert } from '@mantine/core'
+import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
-
-type DayType = 'weekday' | 'saturday' | 'holiday'
-
-interface DirectionTimetable {
-  label: string
-  entries: TimetableEntry[]
-  lastDeparture: { hour: number; minute: number }
-}
-
-interface MockTimetableData {
-  stopName: string
-  directions: DirectionTimetable[]
-}
-
-const MOCK_DATA: Record<DayType, MockTimetableData> = {
-  weekday: {
-    stopName: '栄',
-    directions: [
-      {
-        label: '名古屋駅方面',
-        lastDeparture: { hour: 23, minute: 10 },
-        entries: [
-          { hour: 6, minutes: [5, 20, 38, 55] },
-          { hour: 7, minutes: [8, 18, 28, 38, 48, 58] },
-          { hour: 8, minutes: [8, 18, 30, 45] },
-          { hour: 9, minutes: [0, 15, 30, 50] },
-          { hour: 10, minutes: [10, 30, 50] },
-          { hour: 11, minutes: [10, 30, 50] },
-          { hour: 12, minutes: [10, 30, 50] },
-          { hour: 13, minutes: [10, 30, 50] },
-          { hour: 14, minutes: [10, 30, 50] },
-          { hour: 15, minutes: [5, 20, 38, 55] },
-          { hour: 16, minutes: [8, 22, 36, 50] },
-          { hour: 17, minutes: [4, 18, 32, 46] },
-          { hour: 18, minutes: [12, 27, 45] },
-          { hour: 19, minutes: [5, 18, 39, 57] },
-          { hour: 20, minutes: [10, 31, 52] },
-          { hour: 21, minutes: [15, 40] },
-          { hour: 22, minutes: [10, 40] },
-          { hour: 23, minutes: [10] },
-        ],
-      },
-      {
-        label: '金山方面',
-        lastDeparture: { hour: 22, minute: 50 },
-        entries: [
-          { hour: 6, minutes: [12, 30, 48] },
-          { hour: 7, minutes: [6, 18, 30, 42, 54] },
-          { hour: 8, minutes: [6, 20, 35, 52] },
-          { hour: 9, minutes: [10, 25, 45] },
-          { hour: 10, minutes: [5, 25, 50] },
-          { hour: 11, minutes: [15, 40] },
-          { hour: 12, minutes: [5, 30, 55] },
-          { hour: 13, minutes: [20, 45] },
-          { hour: 14, minutes: [10, 35] },
-          { hour: 15, minutes: [0, 20, 40] },
-          { hour: 16, minutes: [5, 25, 45] },
-          { hour: 17, minutes: [10, 30, 50] },
-          { hour: 18, minutes: [15, 38] },
-          { hour: 19, minutes: [2, 28, 55] },
-          { hour: 20, minutes: [25, 52] },
-          { hour: 21, minutes: [20, 50] },
-          { hour: 22, minutes: [20, 50] },
-        ],
-      },
-    ],
-  },
-  saturday: {
-    stopName: '栄',
-    directions: [
-      {
-        label: '名古屋駅方面',
-        lastDeparture: { hour: 22, minute: 45 },
-        entries: [
-          { hour: 7, minutes: [10, 30, 55] },
-          { hour: 8, minutes: [20, 45] },
-          { hour: 9, minutes: [10, 30, 50] },
-          { hour: 10, minutes: [10, 30, 50] },
-          { hour: 11, minutes: [10, 35] },
-          { hour: 12, minutes: [5, 30, 55] },
-          { hour: 13, minutes: [20, 50] },
-          { hour: 14, minutes: [20, 50] },
-          { hour: 15, minutes: [20, 50] },
-          { hour: 16, minutes: [15, 45] },
-          { hour: 17, minutes: [15, 45] },
-          { hour: 18, minutes: [20, 50] },
-          { hour: 19, minutes: [25, 55] },
-          { hour: 20, minutes: [30] },
-          { hour: 21, minutes: [10, 45] },
-          { hour: 22, minutes: [45] },
-        ],
-      },
-      {
-        label: '金山方面',
-        lastDeparture: { hour: 22, minute: 30 },
-        entries: [
-          { hour: 7, minutes: [20, 48] },
-          { hour: 8, minutes: [15, 45] },
-          { hour: 9, minutes: [15, 45] },
-          { hour: 10, minutes: [15, 45] },
-          { hour: 11, minutes: [15, 45] },
-          { hour: 12, minutes: [15, 45] },
-          { hour: 13, minutes: [15, 48] },
-          { hour: 14, minutes: [18, 48] },
-          { hour: 15, minutes: [18, 48] },
-          { hour: 16, minutes: [18, 48] },
-          { hour: 17, minutes: [18, 48] },
-          { hour: 18, minutes: [20, 52] },
-          { hour: 19, minutes: [28] },
-          { hour: 20, minutes: [5, 38] },
-          { hour: 21, minutes: [15, 50] },
-          { hour: 22, minutes: [30] },
-        ],
-      },
-    ],
-  },
-  holiday: {
-    stopName: '栄',
-    directions: [
-      {
-        label: '名古屋駅方面',
-        lastDeparture: { hour: 22, minute: 30 },
-        entries: [
-          { hour: 8, minutes: [0, 30] },
-          { hour: 9, minutes: [0, 30] },
-          { hour: 10, minutes: [0, 30] },
-          { hour: 11, minutes: [0, 30] },
-          { hour: 12, minutes: [0, 30] },
-          { hour: 13, minutes: [0, 30] },
-          { hour: 14, minutes: [0, 30] },
-          { hour: 15, minutes: [0, 30] },
-          { hour: 16, minutes: [0, 30] },
-          { hour: 17, minutes: [0, 30] },
-          { hour: 18, minutes: [0, 30] },
-          { hour: 19, minutes: [0, 30] },
-          { hour: 20, minutes: [15, 45] },
-          { hour: 21, minutes: [20, 50] },
-          { hour: 22, minutes: [30] },
-        ],
-      },
-      {
-        label: '金山方面',
-        lastDeparture: { hour: 22, minute: 0 },
-        entries: [
-          { hour: 8, minutes: [15, 45] },
-          { hour: 9, minutes: [15, 45] },
-          { hour: 10, minutes: [15, 45] },
-          { hour: 11, minutes: [15, 45] },
-          { hour: 12, minutes: [15, 45] },
-          { hour: 13, minutes: [15, 45] },
-          { hour: 14, minutes: [15, 45] },
-          { hour: 15, minutes: [15, 45] },
-          { hour: 16, minutes: [15, 45] },
-          { hour: 17, minutes: [15, 45] },
-          { hour: 18, minutes: [15, 45] },
-          { hour: 19, minutes: [15, 45] },
-          { hour: 20, minutes: [30] },
-          { hour: 21, minutes: [10, 40] },
-          { hour: 22, minutes: [0] },
-        ],
-      },
-    ],
-  },
-}
+import type { DayType, TimetableDirection } from '@/app/api/timetable/route'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
@@ -184,54 +16,113 @@ interface TimetableControllerProps {
   stopName: string
 }
 
+type FetchState = {
+  loading: boolean
+  error: string | null
+  directions: TimetableDirection[]
+  directionIndex: string
+}
+
+type FetchAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; directions: TimetableDirection[] }
+  | { type: 'FETCH_ERROR'; message: string }
+  | { type: 'SET_DIRECTION'; index: string }
+
+const initialFetchState: FetchState = {
+  loading: true,
+  error: null,
+  directions: [],
+  directionIndex: '0',
+}
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return initialFetchState
+    case 'FETCH_SUCCESS':
+      return { loading: false, error: null, directions: action.directions, directionIndex: '0' }
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: action.message }
+    case 'SET_DIRECTION':
+      return { ...state, directionIndex: action.index }
+  }
+}
+
 export function TimetableController({ stopName }: TimetableControllerProps) {
   const [dayType, setDayType] = useState<DayType>('weekday')
-  const [directionIndex, setDirectionIndex] = useState('0')
+  const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
+    fetchReducer,
+    initialFetchState,
+  )
 
-  const data = MOCK_DATA[dayType]
-  const directions = data.directions
+  useEffect(() => {
+    dispatch({ type: 'FETCH_START' })
+
+    const params = new URLSearchParams({ stopName, dayType })
+    fetch(`/api/timetable?${params}`)
+      .then((r) => r.json())
+      .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
+        if (!json.success) throw new Error(json.error ?? 'データ取得に失敗しました')
+        dispatch({ type: 'FETCH_SUCCESS', directions: json.data })
+      })
+      .catch((e: unknown) =>
+        dispatch({
+          type: 'FETCH_ERROR',
+          message: e instanceof Error ? e.message : 'エラーが発生しました',
+        }),
+      )
+  }, [stopName, dayType])
+
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
-
-  const directionOptions = directions.map((d, i) => ({
-    label: d.label,
-    value: String(i),
-  }))
+  const directionOptions = directions.map((d, i) => ({ label: d.headsign, value: String(i) }))
+  const entries: TimetableEntry[] = selectedDirection?.entries ?? []
 
   return (
     <Stack gap="md">
-      {/* バス停名 */}
       <Title order={2} size="h3">
         {stopName}
       </Title>
-      <Text c="dimmed" size="xs">
-        ※ 表示データはモックです
-      </Text>
 
-      {/* ダイヤ区分 */}
       <SegmentedControl
         fullWidth
         data={DAY_TYPE_OPTIONS}
         value={dayType}
-        onChange={(v) => {
-          setDayType(v as DayType)
-          setDirectionIndex('0')
-        }}
+        onChange={(v) => setDayType(v as DayType)}
       />
 
-      {/* 方面選択 */}
-      <Select
-        label="方面"
-        data={directionOptions}
-        value={directionIndex}
-        onChange={(v) => setDirectionIndex(v ?? '0')}
-        allowDeselect={false}
-      />
+      {loading && (
+        <Center py="xl">
+          <Loader size="sm" />
+        </Center>
+      )}
 
-      {/* 時刻表 */}
-      <TimetableView
-        entries={selectedDirection.entries}
-        lastDeparture={selectedDirection.lastDeparture}
-      />
+      {!loading && error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" title="エラー">
+          {error}
+        </Alert>
+      )}
+
+      {!loading && !error && directions.length === 0 && (
+        <Text c="dimmed" size="sm" ta="center" py="xl">
+          この区分の時刻データがありません
+        </Text>
+      )}
+
+      {!loading && !error && directions.length > 0 && (
+        <>
+          {directionOptions.length > 1 && (
+            <Select
+              label="方面"
+              data={directionOptions}
+              value={directionIndex}
+              onChange={(v) => dispatch({ type: 'SET_DIRECTION', index: v ?? '0' })}
+              allowDeselect={false}
+            />
+          )}
+          <TimetableView entries={entries} lastDeparture={selectedDirection?.lastDeparture} />
+        </>
+      )}
     </Stack>
   )
 }
