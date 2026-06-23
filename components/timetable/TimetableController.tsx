@@ -49,8 +49,15 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   }
 }
 
+function getNowJST(): { hour: number; minute: number } {
+  const now = new Date()
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
+}
+
 export function TimetableController({ stopName }: TimetableControllerProps) {
   const [dayType, setDayType] = useState<DayType>('weekday')
+  const [currentTime] = useState(getNowJST)
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
     fetchReducer,
     initialFetchState,
@@ -120,7 +127,11 @@ export function TimetableController({ stopName }: TimetableControllerProps) {
               allowDeselect={false}
             />
           )}
-          <TimetableView entries={entries} lastDeparture={selectedDirection?.lastDeparture} />
+          <TimetableView
+            entries={entries}
+            lastDeparture={selectedDirection?.lastDeparture}
+            currentTime={currentTime}
+          />
         </>
       )}
     </Stack>
