@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '市バスかんたん時刻表',
-    short_name: '市バス時刻表',
+    name: '市バスかんたん検索',
+    short_name: '市バス検索',
     description: '名古屋市バスの直通ルート検索',
     start_url: '/',
     display: 'standalone',

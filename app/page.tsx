@@ -189,7 +189,7 @@ function SearchPageContent() {
       <Stack gap="md">
         <Stack gap={4}>
           <Title order={1} size="h3" fw={800}>
-            市バスかんたん時刻表
+            市バスかんたん検索
           </Title>
           <Text c="dimmed" size="sm">
             名古屋市バス 直通ルート検索
