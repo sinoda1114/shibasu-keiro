@@ -42,6 +42,13 @@ export function FavoritesList() {
     [router]
   )
 
+  const handleTimetable = useCallback(
+    (route: FavoriteRoute) => {
+      router.push(`/timetable?stopName=${encodeURIComponent(route.fromStopName)}`)
+    },
+    [router]
+  )
+
   return (
     <Stack gap="md">
       <Text c="dimmed" size="sm">
@@ -74,6 +81,7 @@ export function FavoritesList() {
               route={route}
               onReverse={handleReverse}
               onDelete={handleDelete}
+              onTimetable={handleTimetable}
               onClick={handleCardClick}
             />
           ))}

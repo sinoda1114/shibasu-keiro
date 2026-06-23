@@ -11,6 +11,7 @@ import {
   IconArrowRight,
   IconArrowLeftRight,
   IconTrash,
+  IconClock,
 } from '@tabler/icons-react'
 import type { FavoriteRoute } from '@/lib/favorites/local-storage'
 
@@ -18,6 +19,7 @@ interface FavoriteCardProps {
   route: FavoriteRoute
   onReverse: (id: string) => void
   onDelete: (id: string) => void
+  onTimetable: (route: FavoriteRoute) => void
   onClick: (route: FavoriteRoute) => void
 }
 
@@ -25,6 +27,7 @@ export function FavoriteCard({
   route,
   onReverse,
   onDelete,
+  onTimetable,
   onClick,
 }: FavoriteCardProps) {
   return (
@@ -53,6 +56,15 @@ export function FavoriteCard({
 
         {/* アクションボタン */}
         <Group gap={4} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <ActionIcon
+            variant="subtle"
+            color="teal"
+            size="md"
+            aria-label="時刻表を見る"
+            onClick={() => onTimetable(route)}
+          >
+            <IconClock size={rem(16)} />
+          </ActionIcon>
           <ActionIcon
             variant="subtle"
             color="blue"
