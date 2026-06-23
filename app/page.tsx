@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Container,
   Stack,
@@ -51,11 +51,12 @@ async function fetchStopSuggestions(query: string): Promise<string[]> {
   return (json.data as { stopName: string }[]).map((s) => s.stopName)
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const [fromStop, setFromStop] = useState('')
-  const [toStop, setToStop] = useState('')
+  const [fromStop, setFromStop] = useState(() => searchParams.get('from') ?? '')
+  const [toStop, setToStop] = useState(() => searchParams.get('to') ?? '')
   const [fromData, setFromData] = useState<string[]>([])
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
@@ -138,136 +139,141 @@ export default function SearchPage() {
         </Stack>
 
         <Card shadow="sm" radius="lg" withBorder p="md">
-          <Stack gap="md">
-            {/* 出発・到着バス停 */}
-            <Stack gap="xs">
-              <Autocomplete
-                label="出発バス停"
-                placeholder="例: 栄"
-                name="from-stop"
-                data={fromData}
-                value={fromStop}
-                onChange={handleFromChange}
-                maxDropdownHeight={200}
-                radius="md"
-                size="md"
-                comboboxProps={{ shadow: 'md' }}
-                rightSection={fromLoading ? <Loader size="xs" /> : undefined}
-              />
-
-              {/* 入れ替えボタン */}
-              <Box style={{ display: 'flex', justifyContent: 'center' }}>
-                <ActionIcon
-                  variant="filled"
-                  color="blue"
-                  size="xl"
-                  radius="xl"
-                  onClick={handleSwap}
-                  aria-label="出発と到着を入れ替え"
-                  style={{
-                    width: rem(48),
-                    height: rem(48),
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  <IconArrowsUpDown size={rem(22)} stroke={2} />
-                </ActionIcon>
-              </Box>
-
-              <Autocomplete
-                label="到着バス停"
-                placeholder="例: 上浜町"
-                name="to-stop"
-                data={toData}
-                value={toStop}
-                onChange={handleToChange}
-                maxDropdownHeight={200}
-                radius="md"
-                size="md"
-                comboboxProps={{ shadow: 'md' }}
-                rightSection={toLoading ? <Loader size="xs" /> : undefined}
-              />
-            </Stack>
-
-            <Divider />
-
-            {/* ダイヤ区分 */}
-            <Stack gap="xs">
-              <Text size="sm" fw={600} c="gray.7">
-                ダイヤ区分
-              </Text>
-              <Radio
-                label="自動（今日の曜日）"
-                checked={dayTypeAuto}
-                onChange={() => setDayTypeAuto(true)}
-                size="sm"
-              />
-              <Radio
-                label="手動で選択"
-                checked={!dayTypeAuto}
-                onChange={() => setDayTypeAuto(false)}
-                size="sm"
-              />
-              {!dayTypeAuto && (
-                <SegmentedControl
-                  value={dayType}
-                  onChange={(v) => setDayType(v as DayType)}
-                  data={[
-                    { label: '平日', value: 'weekday' },
-                    { label: '土曜', value: 'saturday' },
-                    { label: '休日', value: 'holiday' },
-                  ]}
-                  radius="md"
-                  fullWidth
-                />
-              )}
-            </Stack>
-
-            <Divider />
-
-            {/* 時刻選択 */}
-            <Stack gap="xs">
-              <Text size="sm" fw={600} c="gray.7">
-                出発時刻
-              </Text>
-              <Group gap="md">
-                <Radio
-                  label="いま出る"
-                  checked={timeMode === 'now'}
-                  onChange={() => setTimeMode('now')}
-                  size="sm"
-                />
-                <Radio
-                  label="時刻を指定"
-                  checked={timeMode === 'specify'}
-                  onChange={() => setTimeMode('specify')}
-                  size="sm"
-                />
-              </Group>
-              {timeMode === 'specify' && (
-                <TimeInput
-                  value={specifiedTime}
-                  onChange={(e) => setSpecifiedTime(e.currentTarget.value)}
-                  leftSection={<IconClock size={rem(16)} stroke={1.5} />}
+          <form onSubmit={(e) => { e.preventDefault(); handleSearch() }}>
+            <Stack gap="md">
+              {/* 出発・到着バス停 */}
+              <Stack gap="xs">
+                <Autocomplete
+                  label="出発バス停"
+                  placeholder="例: 栄"
+                  name="from"
+                  autoComplete="on"
+                  data={fromData}
+                  value={fromStop}
+                  onChange={handleFromChange}
+                  maxDropdownHeight={200}
                   radius="md"
                   size="md"
+                  comboboxProps={{ shadow: 'md' }}
+                  rightSection={fromLoading ? <Loader size="xs" /> : undefined}
                 />
-              )}
-            </Stack>
 
-            {/* 検索ボタン */}
-            <Button
-              fullWidth
-              size="lg"
-              radius="md"
-              leftSection={<IconSearch size={rem(20)} stroke={2} />}
-              onClick={handleSearch}
-              disabled={isSearchDisabled}
-              style={{ marginTop: rem(4) }}
-            >
-              バスを検索
-            </Button>
-          </Stack>
+                {/* 入れ替えボタン */}
+                <Box style={{ display: 'flex', justifyContent: 'center' }}>
+                  <ActionIcon
+                    variant="filled"
+                    color="blue"
+                    size="xl"
+                    radius="xl"
+                    type="button"
+                    onClick={handleSwap}
+                    aria-label="出発と到着を入れ替え"
+                    style={{
+                      width: rem(48),
+                      height: rem(48),
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    <IconArrowsUpDown size={rem(22)} stroke={2} />
+                  </ActionIcon>
+                </Box>
+
+                <Autocomplete
+                  label="到着バス停"
+                  placeholder="例: 上浜町"
+                  name="to"
+                  autoComplete="on"
+                  data={toData}
+                  value={toStop}
+                  onChange={handleToChange}
+                  maxDropdownHeight={200}
+                  radius="md"
+                  size="md"
+                  comboboxProps={{ shadow: 'md' }}
+                  rightSection={toLoading ? <Loader size="xs" /> : undefined}
+                />
+              </Stack>
+
+              <Divider />
+
+              {/* ダイヤ区分 */}
+              <Stack gap="xs">
+                <Text size="sm" fw={600} c="gray.7">
+                  ダイヤ区分
+                </Text>
+                <Radio
+                  label="自動（今日の曜日）"
+                  checked={dayTypeAuto}
+                  onChange={() => setDayTypeAuto(true)}
+                  size="sm"
+                />
+                <Radio
+                  label="手動で選択"
+                  checked={!dayTypeAuto}
+                  onChange={() => setDayTypeAuto(false)}
+                  size="sm"
+                />
+                {!dayTypeAuto && (
+                  <SegmentedControl
+                    value={dayType}
+                    onChange={(v) => setDayType(v as DayType)}
+                    data={[
+                      { label: '平日', value: 'weekday' },
+                      { label: '土曜', value: 'saturday' },
+                      { label: '休日', value: 'holiday' },
+                    ]}
+                    radius="md"
+                    fullWidth
+                  />
+                )}
+              </Stack>
+
+              <Divider />
+
+              {/* 時刻選択 */}
+              <Stack gap="xs">
+                <Text size="sm" fw={600} c="gray.7">
+                  出発時刻
+                </Text>
+                <Group gap="md">
+                  <Radio
+                    label="いま出る"
+                    checked={timeMode === 'now'}
+                    onChange={() => setTimeMode('now')}
+                    size="sm"
+                  />
+                  <Radio
+                    label="時刻を指定"
+                    checked={timeMode === 'specify'}
+                    onChange={() => setTimeMode('specify')}
+                    size="sm"
+                  />
+                </Group>
+                {timeMode === 'specify' && (
+                  <TimeInput
+                    value={specifiedTime}
+                    onChange={(e) => setSpecifiedTime(e.currentTarget.value)}
+                    leftSection={<IconClock size={rem(16)} stroke={1.5} />}
+                    radius="md"
+                    size="md"
+                  />
+                )}
+              </Stack>
+
+              {/* 検索ボタン */}
+              <Button
+                fullWidth
+                size="lg"
+                radius="md"
+                type="submit"
+                leftSection={<IconSearch size={rem(20)} stroke={2} />}
+                disabled={isSearchDisabled}
+                style={{ marginTop: rem(4) }}
+              >
+                バスを検索
+              </Button>
+            </Stack>
+          </form>
         </Card>
 
         {history.length > 0 && (
@@ -293,5 +299,19 @@ export default function SearchPage() {
         )}
       </Stack>
     </Container>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <Container size="sm" py="md" px="md">
+          <Text c="dimmed">読み込み中...</Text>
+        </Container>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
   )
 }
