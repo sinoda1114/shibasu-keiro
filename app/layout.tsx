@@ -7,7 +7,7 @@ import { AppShellLayout } from '@/components/layout/AppShellLayout'
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration'
 
 export const metadata: Metadata = {
-  title: '市バスかんたん時刻表',
+  title: '市バスかんたん検索',
   description: '名古屋市バスの直通ルート検索・時刻表確認アプリ',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
