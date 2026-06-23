@@ -72,23 +72,47 @@ function WheelColumn({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const programmatic = useRef(false)
+  const isScrolling = useRef(false)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const len = items.length
+  // 3コピー繰り返しで上下両方向のループを実現
+  const loopedItems = [...items, ...items, ...items]
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    const idx = items.indexOf(selected)
-    if (idx < 0) return
+    if (!el || isScrolling.current) return
+    const localIdx = items.indexOf(selected)
+    if (localIdx < 0) return
     programmatic.current = true
-    el.scrollTop = idx * ITEM_H
+    // 中央コピー（インデックス len〜2*len-1）の該当位置へ
+    el.scrollTop = (len + localIdx) * ITEM_H
     const t = setTimeout(() => { programmatic.current = false }, 200)
     return () => clearTimeout(t)
-  }, [selected, items])
+  }, [selected, items, len])
 
   const handleScroll = () => {
     if (programmatic.current || !ref.current) return
-    const idx = Math.round(ref.current.scrollTop / ITEM_H)
-    const v = items[Math.max(0, Math.min(items.length - 1, idx))]
-    if (v !== selected) onSelect(v)
+    const el = ref.current
+    isScrolling.current = true
+
+    const loopedIdx = Math.round(el.scrollTop / ITEM_H)
+    const clampedIdx = Math.max(0, Math.min(loopedItems.length - 1, loopedIdx))
+    const v = loopedItems[clampedIdx]
+    if (v !== undefined && v !== selected) onSelect(v)
+
+    // スクロール停止後、外側コピーにいれば中央コピーへ無音リセット
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    resetTimer.current = setTimeout(() => {
+      isScrolling.current = false
+      if (!ref.current || programmatic.current) return
+      const currentIdx = Math.round(ref.current.scrollTop / ITEM_H)
+      if (currentIdx < len || currentIdx >= 2 * len) {
+        const targetIdx = ((currentIdx % len) + len) % len + len
+        programmatic.current = true
+        ref.current.scrollTop = targetIdx * ITEM_H
+        setTimeout(() => { programmatic.current = false }, 50)
+      }
+    }, 150)
   }
 
   return (
@@ -135,9 +159,9 @@ function WheelColumn({
           } as React.CSSProperties}
         >
           <div style={{ height: ITEM_H * PAD }} />
-          {items.map((v) => (
+          {loopedItems.map((v, i) => (
             <div
-              key={v}
+              key={i}
               style={{
                 height: ITEM_H,
                 scrollSnapAlign: 'center',
@@ -157,7 +181,7 @@ function WheelColumn({
               }}
               onClick={() => {
                 onSelect(v)
-                ref.current?.scrollTo({ top: items.indexOf(v) * ITEM_H, behavior: 'smooth' })
+                ref.current?.scrollTo({ top: (len + items.indexOf(v)) * ITEM_H, behavior: 'smooth' })
               }}
             >
               {String(v).padStart(2, '0')}
