@@ -17,9 +17,9 @@ import {
   Divider,
   Box,
   Loader,
+  Input,
   rem,
 } from '@mantine/core'
-import { TimeInput } from '@mantine/dates'
 import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
@@ -252,9 +252,13 @@ function SearchPageContent() {
                   />
                 </Group>
                 {timeMode === 'specify' && (
-                  <TimeInput
+                  <Input
+                    component="input"
+                    type="time"
                     value={specifiedTime}
-                    onChange={(e) => setSpecifiedTime(e.currentTarget.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSpecifiedTime(e.currentTarget.value)
+                    }
                     leftSection={<IconClock size={rem(16)} stroke={1.5} />}
                     radius="md"
                     size="md"
