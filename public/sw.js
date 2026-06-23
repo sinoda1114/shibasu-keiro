@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shibasu-keiro-v1'
+const CACHE_NAME = 'shibasu-keiro-v2'
 const STATIC_ASSETS = [
   '/',
   '/favorites',
@@ -22,18 +22,24 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  // API リクエストはネットワーク優先
-  if (event.request.url.includes('/api/')) {
+  // API・Next.js JSチャンクはネットワーク優先（デプロイ後に即反映させるため）
+  if (
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('/_next/static/')
+  ) {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        new Response(JSON.stringify({ success: false, error: 'オフラインです' }), {
-          headers: { 'Content-Type': 'application/json' },
-        })
-      )
+      fetch(event.request).catch(() => {
+        if (event.request.url.includes('/api/')) {
+          return new Response(JSON.stringify({ success: false, error: 'オフラインです' }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        return caches.match(event.request).then((cached) => cached ?? Response.error())
+      })
     )
     return
   }
-  // 静的リソースはキャッシュ優先
+  // アプリシェル（HTML）はキャッシュ優先
   event.respondWith(
     caches.match(event.request).then((cached) =>
       cached ?? fetch(event.request)
