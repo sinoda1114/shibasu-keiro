@@ -26,7 +26,7 @@ import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/l
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
-type TimeMode = 'now' | 'depart' | 'arrive'
+type TimeMode = 'depart' | 'arrive'
 
 function getTodayDayType(): DayType {
   const day = new Date().getDay()
@@ -120,7 +120,7 @@ function SearchPageContent() {
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
   const [dayType, setDayType] = useState<DayType>('auto')
-  const [timeMode, setTimeMode] = useState<TimeMode>('now')
+  const [timeMode, setTimeMode] = useState<TimeMode>('depart')
   const [specifiedTime, setSpecifiedTime] = useState(getNowTime())
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
@@ -168,7 +168,7 @@ function SearchPageContent() {
   const handleSearch = () => {
     if (!fromStop || !toStop) return
     const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
-    const resolvedTime = timeMode === 'now' ? getNowTime() : specifiedTime
+    const resolvedTime = specifiedTime
     const params = new URLSearchParams({
       from: fromStop,
       to: toStop,
@@ -284,16 +284,13 @@ function SearchPageContent() {
                   value={timeMode}
                   onChange={(v) => setTimeMode(v as TimeMode)}
                   data={[
-                    { label: 'いま出る', value: 'now' },
                     { label: '出発時刻', value: 'depart' },
                     { label: '到着時刻', value: 'arrive' },
                   ]}
                   radius="md"
                   fullWidth
                 />
-                {timeMode !== 'now' && (
-                  <TimePickerInput value={specifiedTime} onChange={setSpecifiedTime} />
-                )}
+                <TimePickerInput value={specifiedTime} onChange={setSpecifiedTime} />
               </Stack>
 
               {/* 検索ボタン */}
