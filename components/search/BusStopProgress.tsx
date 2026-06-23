@@ -38,22 +38,24 @@ interface Props {
 }
 
 export function BusStopProgress({ tripId, fromStopName, toStopName, date }: Props) {
-  const [stops, setStops] = useState<TripStop[]>([])
-  const [loading, setLoading] = useState(true)
+  const [stopsData, setStopsData] = useState<{ key: string; stops: TripStop[] } | null>(null)
   const [nowSec, setNowSec] = useState(getNowSeconds)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const currentKey = `${tripId}|${fromStopName}|${toStopName}|${date}`
+  const loading = stopsData === null || stopsData.key !== currentKey
+  const stops = loading ? [] : stopsData.stops
+
   useEffect(() => {
-    setLoading(true)
+    const key = `${tripId}|${fromStopName}|${toStopName}|${date}`
     fetch(
       `/api/routes/trip-stops?tripId=${encodeURIComponent(tripId)}&from=${encodeURIComponent(fromStopName)}&to=${encodeURIComponent(toStopName)}&date=${date}`
     )
       .then((r) => r.json())
       .then((json: { success: boolean; data?: TripStop[] }) => {
-        if (json.success) setStops(json.data ?? [])
+        setStopsData({ key, stops: json.success ? (json.data ?? []) : [] })
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .catch(() => setStopsData({ key, stops: [] }))
   }, [tripId, fromStopName, toStopName, date])
 
   useEffect(() => {
