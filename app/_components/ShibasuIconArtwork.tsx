@@ -11,12 +11,12 @@ export function ShibasuIconArtwork() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: blue,
-        borderRadius: '22%',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
+          background: blue,
+          borderRadius: '22%',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
       <div
         style={{
           position: 'absolute',

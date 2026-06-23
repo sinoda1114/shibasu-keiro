@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local SQLite database (Turso dev)
 .data/
+
+# AI review reports (local only)
+.review-reports/
