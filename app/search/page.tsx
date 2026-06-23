@@ -132,6 +132,8 @@ function SearchResultContent() {
     : results.filter((r) => r.departureSeconds >= timeSeconds)
   const lastBus = !isArriveMode && results.length > 0 ? results[results.length - 1] : null
 
+  const date = getDayTypeDate(dayType)
+
   const [nextBus, ...restBuses] = filtered
   const otherBuses = restBuses.slice(0, 4)
 
@@ -255,6 +257,10 @@ function SearchResultContent() {
               minutesUntil={timeMode === 'now' ? calcMinutesUntil(nextBus.departureSeconds) : null}
               rideMinutes={calcRideMinutes(nextBus.departureSeconds, nextBus.arrivalSeconds)}
               isNext
+              tripId={nextBus.tripId}
+              fromStopName={from}
+              toStopName={to}
+              date={date}
             />
           </Stack>
         )}
@@ -275,6 +281,10 @@ function SearchResultContent() {
                   arrivalTime={bus.arrivalTime}
                   minutesUntil={timeMode === 'now' ? calcMinutesUntil(bus.departureSeconds) : null}
                   rideMinutes={calcRideMinutes(bus.departureSeconds, bus.arrivalSeconds)}
+                  tripId={bus.tripId}
+                  fromStopName={from}
+                  toStopName={to}
+                  date={date}
                 />
               ))}
             </Stack>
@@ -293,6 +303,10 @@ function SearchResultContent() {
               minutesUntil={null}
               rideMinutes={calcRideMinutes(lastBus.departureSeconds, lastBus.arrivalSeconds)}
               isLast
+              tripId={lastBus.tripId}
+              fromStopName={from}
+              toStopName={to}
+              date={date}
             />
           </>
         )}

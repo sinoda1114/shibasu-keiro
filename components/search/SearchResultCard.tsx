@@ -1,5 +1,9 @@
-import { Card, Group, Text, Badge, Stack, Box, rem } from '@mantine/core'
-import { IconBus, IconClock } from '@tabler/icons-react'
+'use client'
+
+import { useState } from 'react'
+import { Card, Group, Text, Badge, Stack, Box, Divider, rem, UnstyledButton } from '@mantine/core'
+import { IconBus, IconClock, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
+import { BusStopProgress } from './BusStopProgress'
 
 export interface SearchResultCardProps {
   routeShortName: string
@@ -10,6 +14,10 @@ export interface SearchResultCardProps {
   rideMinutes: number
   isNext?: boolean
   isLast?: boolean
+  tripId?: string
+  fromStopName?: string
+  toStopName?: string
+  date?: string
 }
 
 function urgencyColor(minutes: number): string {
@@ -40,7 +48,13 @@ export function SearchResultCard({
   rideMinutes,
   isNext = false,
   isLast = false,
+  tripId,
+  fromStopName,
+  toStopName,
+  date,
 }: SearchResultCardProps) {
+  const [expanded, setExpanded] = useState(false)
+  const canExpand = !!(tripId && fromStopName && toStopName && date)
   if (isNext) {
     return (
       <Card
@@ -87,6 +101,30 @@ export function SearchResultCard({
               <Text size="xs" c="dimmed">着</Text>
             </Stack>
           </Group>
+
+          {canExpand && (
+            <>
+              <Divider />
+              <UnstyledButton
+                onClick={() => setExpanded((e) => !e)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: rem(4), width: '100%', padding: `${rem(2)} 0` }}
+              >
+                <Text size="xs" c="blue.5">経路の詳細</Text>
+                {expanded
+                  ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
+                  : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
+                }
+              </UnstyledButton>
+              {expanded && (
+                <BusStopProgress
+                  tripId={tripId!}
+                  fromStopName={fromStopName!}
+                  toStopName={toStopName!}
+                  date={date!}
+                />
+              )}
+            </>
+          )}
         </Stack>
       </Card>
     )
@@ -132,33 +170,59 @@ export function SearchResultCard({
   // 通常の候補
   return (
     <Card shadow="none" radius="md" withBorder>
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
-          <IconBus size={rem(16)} color="var(--mantine-color-blue-5)" stroke={1.5} style={{ flexShrink: 0 }} />
-          <Text size="sm" fw={600} c="blue.6" style={{ flexShrink: 0 }}>
-            {routeShortName}
-          </Text>
-          <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {headsign} 行き
-          </Text>
+      <Stack gap="xs">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
+            <IconBus size={rem(16)} color="var(--mantine-color-blue-5)" stroke={1.5} style={{ flexShrink: 0 }} />
+            <Text size="sm" fw={600} c="blue.6" style={{ flexShrink: 0 }}>
+              {routeShortName}
+            </Text>
+            <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {headsign} 行き
+            </Text>
+          </Group>
+          <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+            <Stack gap={0} align="center">
+              <Text size="md" fw={700}>{departureTime}</Text>
+              <Text size="xs" c="dimmed">発</Text>
+            </Stack>
+            <Text size="xs" c="dimmed">→</Text>
+            <Stack gap={0} align="center">
+              <Text size="md" fw={700}>{arrivalTime}</Text>
+              <Text size="xs" c="dimmed">着</Text>
+            </Stack>
+            {minutesUntil !== null && (
+              <Badge color={urgencyColor(minutesUntil)} variant="light" size="sm" radius="sm">
+                {minutesUntil}分後
+              </Badge>
+            )}
+          </Group>
         </Group>
-        <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
-          <Stack gap={0} align="center">
-            <Text size="md" fw={700}>{departureTime}</Text>
-            <Text size="xs" c="dimmed">発</Text>
-          </Stack>
-          <Text size="xs" c="dimmed">→</Text>
-          <Stack gap={0} align="center">
-            <Text size="md" fw={700}>{arrivalTime}</Text>
-            <Text size="xs" c="dimmed">着</Text>
-          </Stack>
-          {minutesUntil !== null && (
-            <Badge color={urgencyColor(minutesUntil)} variant="light" size="sm" radius="sm">
-              {minutesUntil}分後
-            </Badge>
-          )}
-        </Group>
-      </Group>
+
+        {canExpand && (
+          <>
+            <Divider />
+            <UnstyledButton
+              onClick={() => setExpanded((e) => !e)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: rem(4), width: '100%', padding: `${rem(2)} 0` }}
+            >
+              <Text size="xs" c="blue.5">経路の詳細</Text>
+              {expanded
+                ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
+                : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
+              }
+            </UnstyledButton>
+            {expanded && (
+              <BusStopProgress
+                tripId={tripId!}
+                fromStopName={fromStopName!}
+                toStopName={toStopName!}
+                date={date!}
+              />
+            )}
+          </>
+        )}
+      </Stack>
     </Card>
   )
 }
