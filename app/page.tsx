@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Container,
@@ -75,8 +75,8 @@ function WheelColumn({
   const isScrolling = useRef(false)
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const len = items.length
-  // 3コピー繰り返しで上下両方向のループを実現
-  const loopedItems = [...items, ...items, ...items]
+  // 3コピー繰り返しで上下両方向のループを実現（useMemoで再生成を防ぐ）
+  const loopedItems = useMemo(() => [...items, ...items, ...items], [items])
 
   useEffect(() => {
     const el = ref.current
@@ -84,35 +84,53 @@ function WheelColumn({
     const localIdx = items.indexOf(selected)
     if (localIdx < 0) return
     programmatic.current = true
-    // 中央コピー（インデックス len〜2*len-1）の該当位置へ
     el.scrollTop = (len + localIdx) * ITEM_H
     const t = setTimeout(() => { programmatic.current = false }, 200)
     return () => clearTimeout(t)
   }, [selected, items, len])
 
-  const handleScroll = () => {
-    if (programmatic.current || !ref.current) return
+  // スクロール停止後に外側コピーなら中央コピーへ無音リセット
+  useEffect(() => {
     const el = ref.current
-    isScrolling.current = true
+    if (!el) return
 
-    const loopedIdx = Math.round(el.scrollTop / ITEM_H)
-    const clampedIdx = Math.max(0, Math.min(loopedItems.length - 1, loopedIdx))
-    const v = loopedItems[clampedIdx]
-    if (v !== undefined && v !== selected) onSelect(v)
-
-    // スクロール停止後、外側コピーにいれば中央コピーへ無音リセット
-    if (resetTimer.current) clearTimeout(resetTimer.current)
-    resetTimer.current = setTimeout(() => {
+    const doReset = () => {
       isScrolling.current = false
-      if (!ref.current || programmatic.current) return
-      const currentIdx = Math.round(ref.current.scrollTop / ITEM_H)
+      if (programmatic.current) return
+      const currentIdx = Math.round(el.scrollTop / ITEM_H)
       if (currentIdx < len || currentIdx >= 2 * len) {
         const targetIdx = ((currentIdx % len) + len) % len + len
         programmatic.current = true
-        ref.current.scrollTop = targetIdx * ITEM_H
+        el.scrollTop = targetIdx * ITEM_H
         setTimeout(() => { programmatic.current = false }, 50)
       }
-    }, 150)
+    }
+
+    // scrollend（正確）+ debounceフォールバック（古いブラウザ向け）
+    const onScrollEnd = () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current)
+      doReset()
+    }
+    const onScrollFallback = () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current)
+      resetTimer.current = setTimeout(doReset, 120)
+    }
+
+    el.addEventListener('scrollend', onScrollEnd)
+    el.addEventListener('scroll', onScrollFallback, { passive: true })
+    return () => {
+      el.removeEventListener('scrollend', onScrollEnd)
+      el.removeEventListener('scroll', onScrollFallback)
+    }
+  }, [len])
+
+  const handleScroll = () => {
+    if (programmatic.current || !ref.current) return
+    isScrolling.current = true
+    const loopedIdx = Math.round(ref.current.scrollTop / ITEM_H)
+    const clampedIdx = Math.max(0, Math.min(loopedItems.length - 1, loopedIdx))
+    const v = loopedItems[clampedIdx]
+    if (v !== undefined && v !== selected) onSelect(v)
   }
 
   return (
