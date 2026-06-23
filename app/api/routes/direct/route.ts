@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
       )
     )
     .orderBy(fromSt.departureTimeSeconds)
-    .limit(100)
+    .limit(500)
 
   const data: DirectRouteResult[] = rows.map((r) => ({
     tripId: r.tripId,
