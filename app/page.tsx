@@ -120,6 +120,7 @@ export default function SearchPage() {
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())
+    localStorage.setItem('shibasu_keiro_last_from_stop', fromStop)
     router.push(`/search?${params.toString()}`)
   }
 
