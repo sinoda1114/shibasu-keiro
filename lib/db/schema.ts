@@ -80,6 +80,7 @@ export const busTrips = sqliteTable('bus_trips', {
 }, (t) => [
   index('idx_bus_trips_provider_trip').on(t.providerId, t.tripId, t.gtfsVersionId),
   index('idx_bus_trips_provider_service').on(t.providerId, t.serviceId),
+  index('idx_bus_trips_version_service').on(t.gtfsVersionId, t.serviceId, t.tripId),
 ])
 
 // bus_stop_times（時刻は秒int: "25:30:00" → 91800）
@@ -96,6 +97,7 @@ export const busStopTimes = sqliteTable('bus_stop_times', {
 }, (t) => [
   index('idx_bus_stop_times_stop_dep').on(t.providerId, t.stopId, t.departureTimeSeconds),
   index('idx_bus_stop_times_trip_seq').on(t.providerId, t.tripId, t.stopSequence),
+  index('idx_bus_stop_times_trip_stop').on(t.gtfsVersionId, t.tripId, t.stopId),
 ])
 
 // gtfs_calendar (raw)
