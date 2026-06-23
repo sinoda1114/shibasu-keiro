@@ -203,7 +203,7 @@ function SearchPageContent() {
               <Stack gap="xs">
                 <Autocomplete
                   label="出発バス停"
-                  placeholder="例: 坂上"
+                  placeholder="例: 栄"
                   name="from"
                   autoComplete="on"
                   data={fromData}
