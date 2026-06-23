@@ -126,10 +126,13 @@ function SearchResultContent() {
   }, [from, to, dayType])
 
   const timeSeconds = timeToSeconds(time || '00:00')
-  const upcoming = results.filter((r) => r.departureSeconds >= timeSeconds)
-  const lastBus = results.length > 0 ? results[results.length - 1] : null
+  const isArriveMode = timeMode === 'arrive'
+  const filtered = isArriveMode
+    ? [...results.filter((r) => r.arrivalSeconds <= timeSeconds)].reverse()
+    : results.filter((r) => r.departureSeconds >= timeSeconds)
+  const lastBus = !isArriveMode && results.length > 0 ? results[results.length - 1] : null
 
-  const [nextBus, ...restBuses] = upcoming
+  const [nextBus, ...restBuses] = filtered
   const otherBuses = restBuses.slice(0, 4)
 
   return (
@@ -180,7 +183,7 @@ function SearchResultContent() {
             </Badge>
             {time && (
               <Badge variant="light" color="gray" size="sm" radius="sm">
-                {time} 以降
+                {isArriveMode ? `${time} までに到着` : `${time} 以降に出発`}
               </Badge>
             )}
           </Group>
@@ -215,14 +218,16 @@ function SearchResultContent() {
         )}
 
         {/* 結果なし */}
-        {!loading && !error && upcoming.length === 0 && (
+        {!loading && !error && filtered.length === 0 && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
             title="バスが見つかりませんでした"
             color="orange"
             radius="md"
           >
-            この時間帯に運行するバスはありません。ダイヤ区分や時刻を変えてお試しください。
+            {isArriveMode
+              ? '指定時刻までに到着できるバスはありません。ダイヤ区分や時刻を変えてお試しください。'
+              : 'この時間帯に運行するバスはありません。ダイヤ区分や時刻を変えてお試しください。'}
           </Alert>
         )}
 
@@ -230,7 +235,7 @@ function SearchResultContent() {
         {!loading && !error && nextBus && (
           <Stack gap="xs">
             <Text size="sm" fw={700} c="blue.7">
-              次に乗れるバス
+              {isArriveMode ? '最後に乗れるバス' : '次に乗れるバス'}
             </Text>
             <SearchResultCard
               routeShortName={nextBus.routeId}
@@ -248,7 +253,7 @@ function SearchResultContent() {
         {!loading && !error && otherBuses.length > 0 && (
           <Stack gap="xs">
             <Text size="sm" fw={600} c="gray.7">
-              その後のバス
+              {isArriveMode ? 'その前のバス' : 'その後のバス'}
             </Text>
             <Stack gap="xs">
               {otherBuses.map((bus) => (

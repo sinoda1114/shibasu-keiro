@@ -27,7 +27,7 @@ import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/l
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
-type TimeMode = 'now' | 'specify'
+type TimeMode = 'now' | 'depart' | 'arrive'
 
 function getTodayDayType(): DayType {
   const day = new Date().getDay()
@@ -293,9 +293,9 @@ function SearchPageContent() {
               {/* 時刻選択 */}
               <Stack gap="xs">
                 <Text size="sm" fw={600} c="gray.7">
-                  出発時刻
+                  時刻
                 </Text>
-                <Group gap="md">
+                <Stack gap={4}>
                   <Radio
                     label="いま出る"
                     checked={timeMode === 'now'}
@@ -303,13 +303,19 @@ function SearchPageContent() {
                     size="sm"
                   />
                   <Radio
-                    label="時刻を指定"
-                    checked={timeMode === 'specify'}
-                    onChange={() => setTimeMode('specify')}
+                    label="出発時刻を指定"
+                    checked={timeMode === 'depart'}
+                    onChange={() => setTimeMode('depart')}
                     size="sm"
                   />
-                </Group>
-                {timeMode === 'specify' && (
+                  <Radio
+                    label="到着時刻を指定"
+                    checked={timeMode === 'arrive'}
+                    onChange={() => setTimeMode('arrive')}
+                    size="sm"
+                  />
+                </Stack>
+                {timeMode !== 'now' && (
                   <TimePickerInput value={specifiedTime} onChange={setSpecifiedTime} />
                 )}
               </Stack>
