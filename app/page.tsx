@@ -226,9 +226,9 @@ function SearchPageContent() {
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
-  const [dayType, setDayType] = useState<DayType>('auto')
-  const [timeMode, setTimeMode] = useState<TimeMode>('depart')
-  const [specifiedTime, setSpecifiedTime] = useState(getNowTime())
+  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? 'auto')
+  const [timeMode, setTimeMode] = useState<TimeMode>(() => (searchParams.get('timeMode') as TimeMode) ?? 'depart')
+  const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
 

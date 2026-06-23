@@ -144,7 +144,10 @@ function SearchResultContent() {
             variant="subtle"
             size="xs"
             leftSection={<IconArrowLeft size={rem(14)} stroke={2} />}
-            onClick={() => router.back()}
+            onClick={() => {
+              const params = new URLSearchParams({ from, to, dayType, time, timeMode })
+              router.push(`/?${params.toString()}`)
+            }}
             px={4}
           >
             検索に戻る
