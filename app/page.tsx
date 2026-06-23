@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Container,
@@ -17,7 +17,6 @@ import {
   Box,
   Loader,
   Input,
-  NumberInput,
   Popover,
   rem,
 } from '@mantine/core'
@@ -53,15 +52,134 @@ async function fetchStopSuggestions(query: string): Promise<string[]> {
   return (json.data as { stopName: string }[]).map((s) => s.stopName)
 }
 
+const ITEM_H = 44
+const VISIBLE = 5
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const MINUTES = Array.from({ length: 60 }, (_, i) => i)
+const PAD = Math.floor(VISIBLE / 2) // = 2
+
+function WheelColumn({
+  items,
+  selected,
+  onSelect,
+  label,
+}: {
+  items: number[]
+  selected: number
+  onSelect: (v: number) => void
+  label: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const programmatic = useRef(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const idx = items.indexOf(selected)
+    if (idx < 0) return
+    programmatic.current = true
+    el.scrollTop = idx * ITEM_H
+    const t = setTimeout(() => { programmatic.current = false }, 200)
+    return () => clearTimeout(t)
+  }, [selected, items])
+
+  const handleScroll = () => {
+    if (programmatic.current || !ref.current) return
+    const idx = Math.round(ref.current.scrollTop / ITEM_H)
+    const v = items[Math.max(0, Math.min(items.length - 1, idx))]
+    if (v !== selected) onSelect(v)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
+      <div style={{ position: 'relative', width: 64 }}>
+        {/* 選択ハイライト */}
+        <div style={{
+          position: 'absolute',
+          top: ITEM_H * PAD,
+          left: 4,
+          right: 4,
+          height: ITEM_H,
+          background: 'var(--mantine-color-blue-0)',
+          borderRadius: 8,
+          border: '2px solid var(--mantine-color-blue-3)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }} />
+        {/* 上フェード */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: ITEM_H * PAD,
+          background: 'linear-gradient(to bottom, white 50%, transparent)',
+          pointerEvents: 'none', zIndex: 2,
+        }} />
+        {/* 下フェード */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: ITEM_H * PAD,
+          background: 'linear-gradient(to top, white 50%, transparent)',
+          pointerEvents: 'none', zIndex: 2,
+        }} />
+        <div
+          ref={ref}
+          className="shibasu-wheel"
+          onScroll={handleScroll}
+          style={{
+            height: ITEM_H * VISIBLE,
+            overflowY: 'scroll',
+            scrollSnapType: 'y mandatory',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+          } as React.CSSProperties}
+        >
+          <div style={{ height: ITEM_H * PAD }} />
+          {items.map((v) => (
+            <div
+              key={v}
+              style={{
+                height: ITEM_H,
+                scrollSnapAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: v === selected ? 22 : 17,
+                fontWeight: v === selected ? 700 : 400,
+                color: v === selected
+                  ? 'var(--mantine-color-blue-7)'
+                  : 'var(--mantine-color-gray-5)',
+                transition: 'font-size 0.12s, color 0.12s',
+                cursor: 'pointer',
+                userSelect: 'none',
+                position: 'relative',
+                zIndex: 3,
+              }}
+              onClick={() => {
+                onSelect(v)
+                ref.current?.scrollTo({ top: items.indexOf(v) * ITEM_H, behavior: 'smooth' })
+              }}
+            >
+              {String(v).padStart(2, '0')}
+            </div>
+          ))}
+          <div style={{ height: ITEM_H * PAD }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TimePickerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [opened, setOpened] = useState(false)
   const [hour, minute] = value.split(':').map((n) => parseInt(n, 10))
 
-  const update = (h: number, m: number) =>
-    onChange(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  const setHour = (h: number) =>
+    onChange(`${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+  const setMinute = (m: number) =>
+    onChange(`${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
 
   return (
-    <Popover opened={opened} onChange={setOpened} position="bottom-start">
+    <Popover opened={opened} onChange={setOpened} position="bottom-start" trapFocus={false}>
       <Popover.Target>
         <Input
           component="button"
@@ -76,34 +194,23 @@ function TimePickerInput({ value, onChange }: { value: string; onChange: (v: str
           {value}
         </Input>
       </Popover.Target>
-      <Popover.Dropdown>
-        <Group gap="xs" align="flex-end" wrap="nowrap">
-          <NumberInput
-            label="時"
-            value={hour}
-            onChange={(v) => update(typeof v === 'number' ? v : parseInt(String(v), 10) || 0, minute ?? 0)}
-            min={0}
-            max={23}
-            clampBehavior="strict"
-            w={72}
-            size="sm"
-          />
-          <Text size="lg" fw={700} style={{ paddingBottom: rem(6) }}>:</Text>
-          <NumberInput
-            label="分"
-            value={minute}
-            onChange={(v) => update(hour ?? 0, typeof v === 'number' ? v : parseInt(String(v), 10) || 0)}
-            min={0}
-            max={59}
-            step={5}
-            clampBehavior="strict"
-            w={72}
-            size="sm"
-          />
-          <Button size="sm" onClick={() => setOpened(false)} style={{ marginBottom: rem(1) }}>
-            OK
-          </Button>
+      <Popover.Dropdown p="md">
+        {/* webkit用スクロールバー非表示 */}
+        <style>{`.shibasu-wheel::-webkit-scrollbar{display:none}`}</style>
+        <Group gap="sm" align="flex-start" wrap="nowrap" justify="center">
+          <WheelColumn items={HOURS} selected={hour} onSelect={setHour} label="時" />
+          <Text
+            size="xl"
+            fw={700}
+            style={{ paddingTop: rem(ITEM_H * PAD + 10), color: 'var(--mantine-color-gray-6)' }}
+          >
+            :
+          </Text>
+          <WheelColumn items={MINUTES} selected={minute} onSelect={setMinute} label="分" />
         </Group>
+        <Button fullWidth size="sm" mt="xs" onClick={() => setOpened(false)}>
+          OK
+        </Button>
       </Popover.Dropdown>
     </Popover>
   )
@@ -203,7 +310,7 @@ function SearchPageContent() {
               <Stack gap="xs">
                 <Autocomplete
                   label="出発バス停"
-                  placeholder="例: 坂上"
+                  placeholder="例: 栄"
                   name="from"
                   autoComplete="on"
                   data={fromData}
