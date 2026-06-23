@@ -17,7 +17,7 @@ import {
   ActionIcon,
   rem,
 } from '@mantine/core'
-import { IconArrowLeft, IconAlertCircle, IconBus, IconStar } from '@tabler/icons-react'
+import { IconArrowLeft, IconAlertCircle, IconBus, IconStar, IconClock } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { Suspense } from 'react'
@@ -184,6 +184,15 @@ function SearchResultContent() {
               </Badge>
             )}
           </Group>
+          <Button
+            variant="subtle"
+            size="xs"
+            leftSection={<IconClock size={rem(12)} stroke={1.5} />}
+            onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}`)}
+            px={4}
+          >
+            {from}の時刻表を見る
+          </Button>
         </Stack>
 
         {/* ローディング */}
