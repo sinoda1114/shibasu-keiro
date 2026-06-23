@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic'
-
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, inArray, lt, isNotNull } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
@@ -141,5 +139,7 @@ export async function GET(req: NextRequest) {
     arrivalSeconds: r.arrSec!,
   }))
 
-  return NextResponse.json({ success: true, data, date: dateStr })
+  return NextResponse.json({ success: true, data, date: dateStr }, {
+    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+  })
 }

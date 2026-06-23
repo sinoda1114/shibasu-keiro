@@ -203,7 +203,7 @@ function SearchPageContent() {
               <Stack gap="xs">
                 <Autocomplete
                   label="出発バス停"
-                  placeholder="例: 栄"
+                  placeholder="例: 坂上"
                   name="from"
                   autoComplete="on"
                   data={fromData}
@@ -238,7 +238,7 @@ function SearchPageContent() {
 
                 <Autocomplete
                   label="到着バス停"
-                  placeholder="例: 上浜町"
+                  placeholder="例: 金山"
                   name="to"
                   autoComplete="on"
                   data={toData}

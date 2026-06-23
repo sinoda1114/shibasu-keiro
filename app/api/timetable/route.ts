@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic'
-
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, inArray, isNotNull, or } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
@@ -130,5 +128,7 @@ export async function GET(req: NextRequest) {
     return { headsign, entries, lastDeparture: { hour: lastH, minute: lastM } }
   })
 
-  return NextResponse.json({ success: true, data })
+  return NextResponse.json({ success: true, data }, {
+    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+  })
 }

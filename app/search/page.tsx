@@ -153,33 +153,35 @@ function SearchResultContent() {
 
         {/* 検索条件の概要 */}
         <Stack gap={8}>
-          <Group gap="xs" align="center">
-            <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} />
-            <Title order={2} size="h4" fw={800}>
-              {from} → {to}
-            </Title>
+          <Group gap="xs" align="center" justify="space-between" wrap="nowrap">
+            <Group gap="xs" align="center" style={{ minWidth: 0 }}>
+              <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} style={{ flexShrink: 0 }} />
+              <Title order={2} size="h4" fw={800} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {from} → {to}
+              </Title>
+            </Group>
+            <Button
+              variant={isFavorited ? 'filled' : 'outline'}
+              color="yellow"
+              size="sm"
+              radius="md"
+              leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
+              aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
+              onClick={() => {
+                if (isFavorited) {
+                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
+                  if (target) removeFavorite(target.id)
+                  setIsFavorited(false)
+                } else {
+                  addFavorite(from, to)
+                  setIsFavorited(true)
+                }
+              }}
+              style={{ flexShrink: 0 }}
+            >
+              {isFavorited ? 'お気に入り済み' : 'お気に入りに追加'}
+            </Button>
           </Group>
-          <Button
-            variant={isFavorited ? 'filled' : 'outline'}
-            color="yellow"
-            size="sm"
-            radius="md"
-            leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
-            aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
-            onClick={() => {
-              if (isFavorited) {
-                const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
-                if (target) removeFavorite(target.id)
-                setIsFavorited(false)
-              } else {
-                addFavorite(from, to)
-                setIsFavorited(true)
-              }
-            }}
-            style={{ alignSelf: 'flex-start' }}
-          >
-            {isFavorited ? 'お気に入り済み' : 'お気に入りに追加'}
-          </Button>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
               {DAY_TYPE_LABELS[dayType] ?? dayType}
@@ -191,11 +193,13 @@ function SearchResultContent() {
             )}
           </Group>
           <Button
-            variant="subtle"
-            size="xs"
-            leftSection={<IconClock size={rem(12)} stroke={1.5} />}
+            variant="light"
+            color="blue"
+            size="sm"
+            radius="md"
+            leftSection={<IconClock size={rem(16)} stroke={1.5} />}
             onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}`)}
-            px={4}
+            style={{ alignSelf: 'flex-start' }}
           >
             {from}の時刻表を見る
           </Button>
