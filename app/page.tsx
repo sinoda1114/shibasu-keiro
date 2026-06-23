@@ -20,8 +20,9 @@ import {
   Popover,
   rem,
 } from '@mantine/core'
-import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
+import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
@@ -231,15 +232,31 @@ function SearchPageContent() {
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
+  const [stopFavorites, setStopFavorites] = useState<string[]>(() => getStopFavorites())
 
   const fromDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const getQuickAccessStops = (): string[] => {
+    const favs = getStopFavorites()
+    const seen = new Set(favs)
+    const recentStops: string[] = []
+    for (const h of history) {
+      for (const s of [h.from, h.to]) {
+        if (!seen.has(s)) {
+          seen.add(s)
+          recentStops.push(s)
+        }
+      }
+    }
+    return [...favs, ...recentStops]
+  }
 
   const handleFromChange = (value: string) => {
     setFromStop(value)
     if (fromDebounceRef.current) clearTimeout(fromDebounceRef.current)
     if (value.length === 0) {
-      setFromData([])
+      setFromData(getQuickAccessStops())
       return
     }
     setFromLoading(true)
@@ -254,7 +271,7 @@ function SearchPageContent() {
     setToStop(value)
     if (toDebounceRef.current) clearTimeout(toDebounceRef.current)
     if (value.length === 0) {
-      setToData([])
+      setToData(getQuickAccessStops())
       return
     }
     setToLoading(true)
@@ -263,6 +280,44 @@ function SearchPageContent() {
       setToData(suggestions)
       setToLoading(false)
     }, 300)
+  }
+
+  const handleFromFocus = () => {
+    if (fromStop.length === 0) setFromData(getQuickAccessStops())
+  }
+
+  const handleToFocus = () => {
+    if (toStop.length === 0) setToData(getQuickAccessStops())
+  }
+
+  const handleStarToggle = (stopName: string) => {
+    toggleStopFavorite(stopName)
+    setStopFavorites(getStopFavorites())
+  }
+
+  const renderStopOption = ({ option }: { option: string | { value: string; label?: string } }) => {
+    const stopName = typeof option === 'string' ? option : option.value
+    const isFav = stopFavorites.includes(stopName)
+    return (
+      <Group justify="space-between" style={{ width: '100%' }} wrap="nowrap">
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {stopName}
+        </span>
+        <ActionIcon
+          variant="transparent"
+          color={isFav ? 'yellow' : 'gray'}
+          size="sm"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            handleStarToggle(stopName)
+          }}
+          aria-label={isFav ? 'お気に入りから削除' : 'お気に入りに追加'}
+        >
+          <IconStar size={14} fill={isFav ? 'currentColor' : 'none'} />
+        </ActionIcon>
+      </Group>
+    )
   }
 
   const handleSwap = () => {
@@ -312,15 +367,31 @@ function SearchPageContent() {
                   label="出発バス停"
                   placeholder="例: 栄"
                   name="from"
-                  autoComplete="on"
+                  autoComplete="off"
                   data={fromData}
                   value={fromStop}
                   onChange={handleFromChange}
-                  maxDropdownHeight={200}
+                  onFocus={handleFromFocus}
+                  maxDropdownHeight={240}
                   radius="md"
                   size="md"
                   comboboxProps={{ shadow: 'md' }}
-                  rightSection={fromLoading ? <Loader size="xs" /> : undefined}
+                  renderOption={renderStopOption}
+                  rightSection={
+                    fromLoading ? (
+                      <Loader size="xs" />
+                    ) : fromStop ? (
+                      <ActionIcon
+                        variant="transparent"
+                        color="gray"
+                        size="sm"
+                        onClick={() => { setFromStop(''); setFromData(getQuickAccessStops()) }}
+                        aria-label="クリア"
+                      >
+                        <IconX size={14} />
+                      </ActionIcon>
+                    ) : undefined
+                  }
                 />
 
                 {/* 入れ替えボタン */}
@@ -347,15 +418,31 @@ function SearchPageContent() {
                   label="到着バス停"
                   placeholder="例: 金山"
                   name="to"
-                  autoComplete="on"
+                  autoComplete="off"
                   data={toData}
                   value={toStop}
                   onChange={handleToChange}
-                  maxDropdownHeight={200}
+                  onFocus={handleToFocus}
+                  maxDropdownHeight={240}
                   radius="md"
                   size="md"
                   comboboxProps={{ shadow: 'md' }}
-                  rightSection={toLoading ? <Loader size="xs" /> : undefined}
+                  renderOption={renderStopOption}
+                  rightSection={
+                    toLoading ? (
+                      <Loader size="xs" />
+                    ) : toStop ? (
+                      <ActionIcon
+                        variant="transparent"
+                        color="gray"
+                        size="sm"
+                        onClick={() => { setToStop(''); setToData(getQuickAccessStops()) }}
+                        aria-label="クリア"
+                      >
+                        <IconX size={14} />
+                      </ActionIcon>
+                    ) : undefined
+                  }
                 />
               </Stack>
 
