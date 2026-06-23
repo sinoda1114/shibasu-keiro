@@ -18,6 +18,8 @@ import {
   Box,
   Loader,
   Input,
+  NumberInput,
+  Popover,
   rem,
 } from '@mantine/core'
 import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
@@ -50,6 +52,62 @@ async function fetchStopSuggestions(query: string): Promise<string[]> {
   const json = await res.json()
   if (!json.success) return []
   return (json.data as { stopName: string }[]).map((s) => s.stopName)
+}
+
+function TimePickerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [opened, setOpened] = useState(false)
+  const [hour, minute] = value.split(':').map((n) => parseInt(n, 10))
+
+  const update = (h: number, m: number) =>
+    onChange(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+
+  return (
+    <Popover opened={opened} onChange={setOpened} position="bottom-start">
+      <Popover.Target>
+        <Input
+          component="button"
+          type="button"
+          pointer
+          onClick={() => setOpened((o) => !o)}
+          leftSection={<IconClock size={rem(16)} stroke={1.5} />}
+          radius="md"
+          size="md"
+          styles={{ input: { textAlign: 'left', cursor: 'pointer' } }}
+        >
+          {value}
+        </Input>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Group gap="xs" align="flex-end" wrap="nowrap">
+          <NumberInput
+            label="時"
+            value={hour}
+            onChange={(v) => update(typeof v === 'number' ? v : parseInt(String(v), 10) || 0, minute ?? 0)}
+            min={0}
+            max={23}
+            clampBehavior="strict"
+            w={72}
+            size="sm"
+          />
+          <Text size="lg" fw={700} style={{ paddingBottom: rem(6) }}>:</Text>
+          <NumberInput
+            label="分"
+            value={minute}
+            onChange={(v) => update(hour ?? 0, typeof v === 'number' ? v : parseInt(String(v), 10) || 0)}
+            min={0}
+            max={59}
+            step={5}
+            clampBehavior="strict"
+            w={72}
+            size="sm"
+          />
+          <Button size="sm" onClick={() => setOpened(false)} style={{ marginBottom: rem(1) }}>
+            OK
+          </Button>
+        </Group>
+      </Popover.Dropdown>
+    </Popover>
+  )
 }
 
 function SearchPageContent() {
@@ -252,17 +310,7 @@ function SearchPageContent() {
                   />
                 </Group>
                 {timeMode === 'specify' && (
-                  <Input
-                    component="input"
-                    type="time"
-                    value={specifiedTime}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSpecifiedTime(e.currentTarget.value)
-                    }
-                    leftSection={<IconClock size={rem(16)} stroke={1.5} />}
-                    radius="md"
-                    size="md"
-                  />
+                  <TimePickerInput value={specifiedTime} onChange={setSpecifiedTime} />
                 )}
               </Stack>
 
