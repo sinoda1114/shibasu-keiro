@@ -14,9 +14,11 @@ import {
   Alert,
   Loader,
   Center,
+  ActionIcon,
   rem,
 } from '@mantine/core'
-import { IconArrowLeft, IconAlertCircle, IconBus } from '@tabler/icons-react'
+import { IconArrowLeft, IconAlertCircle, IconBus, IconStar } from '@tabler/icons-react'
+import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { Suspense } from 'react'
 
@@ -96,6 +98,10 @@ function SearchResultContent() {
   const [results, setResults] = useState<DirectRouteResult[]>([])
   const [loading, setLoading] = useState(!!(from && to))
   const [error, setError] = useState<string | null>(null)
+  const [isFavorited, setIsFavorited] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to)
+  })
 
   useEffect(() => {
     if (!from || !to) return
@@ -149,6 +155,24 @@ function SearchResultContent() {
             <Title order={2} size="h4" fw={800}>
               {from} → {to}
             </Title>
+            <ActionIcon
+              variant={isFavorited ? 'filled' : 'subtle'}
+              color="yellow"
+              size="md"
+              aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
+              onClick={() => {
+                if (isFavorited) {
+                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
+                  if (target) removeFavorite(target.id)
+                  setIsFavorited(false)
+                } else {
+                  addFavorite(from, to)
+                  setIsFavorited(true)
+                }
+              }}
+            >
+              <IconStar size={rem(16)} />
+            </ActionIcon>
           </Group>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
