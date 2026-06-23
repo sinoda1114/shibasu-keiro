@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { Stack, Title, SegmentedControl, Select, Text, Loader, Center, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
@@ -16,27 +16,62 @@ interface TimetableControllerProps {
   stopName: string
 }
 
+type FetchState = {
+  loading: boolean
+  error: string | null
+  directions: TimetableDirection[]
+  directionIndex: string
+}
+
+type FetchAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; directions: TimetableDirection[] }
+  | { type: 'FETCH_ERROR'; message: string }
+  | { type: 'SET_DIRECTION'; index: string }
+
+const initialFetchState: FetchState = {
+  loading: true,
+  error: null,
+  directions: [],
+  directionIndex: '0',
+}
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return initialFetchState
+    case 'FETCH_SUCCESS':
+      return { loading: false, error: null, directions: action.directions, directionIndex: '0' }
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: action.message }
+    case 'SET_DIRECTION':
+      return { ...state, directionIndex: action.index }
+  }
+}
+
 export function TimetableController({ stopName }: TimetableControllerProps) {
   const [dayType, setDayType] = useState<DayType>('weekday')
-  const [directionIndex, setDirectionIndex] = useState('0')
-  const [directions, setDirections] = useState<TimetableDirection[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
+    fetchReducer,
+    initialFetchState,
+  )
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    setDirectionIndex('0')
+    dispatch({ type: 'FETCH_START' })
 
     const params = new URLSearchParams({ stopName, dayType })
     fetch(`/api/timetable?${params}`)
       .then((r) => r.json())
-      .then((json) => {
+      .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
         if (!json.success) throw new Error(json.error ?? 'データ取得に失敗しました')
-        setDirections(json.data)
+        dispatch({ type: 'FETCH_SUCCESS', directions: json.data })
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'エラーが発生しました'))
-      .finally(() => setLoading(false))
+      .catch((e: unknown) =>
+        dispatch({
+          type: 'FETCH_ERROR',
+          message: e instanceof Error ? e.message : 'エラーが発生しました',
+        }),
+      )
   }, [stopName, dayType])
 
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
@@ -81,7 +116,7 @@ export function TimetableController({ stopName }: TimetableControllerProps) {
               label="方面"
               data={directionOptions}
               value={directionIndex}
-              onChange={(v) => setDirectionIndex(v ?? '0')}
+              onChange={(v) => dispatch({ type: 'SET_DIRECTION', index: v ?? '0' })}
               allowDeselect={false}
             />
           )}
