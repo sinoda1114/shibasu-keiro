@@ -21,6 +21,7 @@ import {
 } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
 import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
+import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'now' | 'specify'
@@ -63,6 +64,8 @@ export default function SearchPage() {
   const [dayType, setDayType] = useState<DayType>(getTodayDayType())
   const [timeMode, setTimeMode] = useState<TimeMode>('now')
   const [specifiedTime, setSpecifiedTime] = useState(getNowTime())
+
+  const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
 
   const fromDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -115,6 +118,8 @@ export default function SearchPage() {
       time: resolvedTime,
       timeMode,
     })
+    saveSearchHistory(fromStop, toStop)
+    setHistory(getSearchHistory())
     router.push(`/search?${params.toString()}`)
   }
 
@@ -139,6 +144,7 @@ export default function SearchPage() {
               <Autocomplete
                 label="出発バス停"
                 placeholder="例: 栄"
+                name="from-stop"
                 data={fromData}
                 value={fromStop}
                 onChange={handleFromChange}
@@ -171,6 +177,7 @@ export default function SearchPage() {
               <Autocomplete
                 label="到着バス停"
                 placeholder="例: 上浜町"
+                name="to-stop"
                 data={toData}
                 value={toStop}
                 onChange={handleToChange}
@@ -262,6 +269,28 @@ export default function SearchPage() {
             </Button>
           </Stack>
         </Card>
+
+        {history.length > 0 && (
+          <Stack gap="xs">
+            <Text size="xs" c="dimmed">最近の検索</Text>
+            <Stack gap={4}>
+              {history.slice(0, 5).map((item, i) => (
+                <Button
+                  key={i}
+                  variant="subtle"
+                  size="xs"
+                  justify="start"
+                  onClick={() => {
+                    setFromStop(item.from)
+                    setToStop(item.to)
+                  }}
+                >
+                  {item.from} → {item.to}
+                </Button>
+              ))}
+            </Stack>
+          </Stack>
+        )}
       </Stack>
     </Container>
   )
