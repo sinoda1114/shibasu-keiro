@@ -5,7 +5,6 @@ import { busStops, busStopTimes } from '@/lib/db/schema'
 import {
   getActiveVersionId,
   secondsToHHMM,
-  todayYYYYMMDD,
 } from '@/lib/gtfs/service-resolver'
 
 export interface TripStop {
@@ -22,7 +21,6 @@ export async function GET(req: NextRequest) {
   const tripId = searchParams.get('tripId')?.trim()
   const fromName = searchParams.get('from')?.trim()
   const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   if (!tripId || !fromName || !toName) {
