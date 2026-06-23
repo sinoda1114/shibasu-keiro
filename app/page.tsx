@@ -22,6 +22,7 @@ import {
 import { TimeInput } from '@mantine/dates'
 import { IconArrowsUpDown, IconSearch, IconClock } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
+import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'now' | 'specify'
@@ -120,7 +121,7 @@ export default function SearchPage() {
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())
-    localStorage.setItem('shibasu_keiro_last_from_stop', fromStop)
+    localStorage.setItem(LAST_FROM_STOP_KEY, fromStop)
     router.push(`/search?${params.toString()}`)
   }
 
