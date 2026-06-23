@@ -152,31 +152,34 @@ function SearchResultContent() {
         </Group>
 
         {/* 検索条件の概要 */}
-        <Stack gap={4}>
+        <Stack gap={8}>
           <Group gap="xs" align="center">
             <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} />
             <Title order={2} size="h4" fw={800}>
               {from} → {to}
             </Title>
-            <ActionIcon
-              variant={isFavorited ? 'filled' : 'subtle'}
-              color="yellow"
-              size="md"
-              aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
-              onClick={() => {
-                if (isFavorited) {
-                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
-                  if (target) removeFavorite(target.id)
-                  setIsFavorited(false)
-                } else {
-                  addFavorite(from, to)
-                  setIsFavorited(true)
-                }
-              }}
-            >
-              <IconStar size={rem(16)} />
-            </ActionIcon>
           </Group>
+          <Button
+            variant={isFavorited ? 'filled' : 'outline'}
+            color="yellow"
+            size="sm"
+            radius="md"
+            leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
+            aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
+            onClick={() => {
+              if (isFavorited) {
+                const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
+                if (target) removeFavorite(target.id)
+                setIsFavorited(false)
+              } else {
+                addFavorite(from, to)
+                setIsFavorited(true)
+              }
+            }}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {isFavorited ? 'お気に入り済み' : 'お気に入りに追加'}
+          </Button>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
               {DAY_TYPE_LABELS[dayType] ?? dayType}

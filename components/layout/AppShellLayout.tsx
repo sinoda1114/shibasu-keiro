@@ -5,13 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   IconSearch,
   IconStar,
-  IconSettings,
 } from '@tabler/icons-react'
 
 const navItems = [
   { label: '検索', href: '/', icon: IconSearch },
   { label: 'お気に入り', href: '/favorites', icon: IconStar },
-  { label: '管理', href: '/admin', icon: IconSettings },
 ] as const
 
 interface AppShellLayoutProps {
