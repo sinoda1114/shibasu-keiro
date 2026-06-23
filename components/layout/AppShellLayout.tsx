@@ -5,14 +5,12 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   IconSearch,
   IconStar,
-  IconClock,
   IconSettings,
 } from '@tabler/icons-react'
 
 const navItems = [
   { label: '検索', href: '/', icon: IconSearch },
   { label: 'お気に入り', href: '/favorites', icon: IconStar },
-  { label: '時刻表', href: '/timetable', icon: IconClock },
   { label: '管理', href: '/admin', icon: IconSettings },
 ] as const
 
