@@ -53,8 +53,9 @@ async function main(): Promise<void> {
   const versionName = new Date().toISOString().split('T')[0] // YYYY-MM-DD
 
   try {
-    // 2. ダウンロード・解凍
-    await downloadAndExtract(gtfsUrl, tmpDir)
+    // 2. ダウンロード・解凍（ODPT URLの場合はresolvedUrl=Azure Blob URLを使用）
+    const downloadUrl = update.resolvedUrl ?? gtfsUrl
+    await downloadAndExtract(downloadUrl, tmpDir)
 
     // 3. staging として取込
     const versionId = await importGtfs(tmpDir, versionName, config, update.sourceHash)
