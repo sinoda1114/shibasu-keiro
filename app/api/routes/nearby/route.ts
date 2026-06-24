@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, between, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { db } from '@/lib/db/client'
-import { busStops, busStopTimes, busTrips } from '@/lib/db/schema'
+import { busRoutes, busStops, busStopTimes, busTrips } from '@/lib/db/schema'
 import {
   getActiveVersionId,
   resolveServiceIds,
@@ -158,6 +158,7 @@ export async function GET(req: NextRequest) {
   const fromSt = alias(busStopTimes, 'from_st')
   const toSt = alias(busStopTimes, 'to_st')
   const tripsAlias = alias(busTrips, 't')
+  const routesAlias = alias(busRoutes, 'r')
 
   const allFromIds = nearbyStops.map((s) => s.stopId)
 
@@ -166,6 +167,7 @@ export async function GET(req: NextRequest) {
       fromStopId: fromSt.stopId,
       tripId: fromSt.tripId,
       routeId: tripsAlias.routeId,
+      routeShortName: routesAlias.routeShortName,
       headsign: tripsAlias.tripHeadsign,
       depSec: fromSt.departureTimeSeconds,
       arrSec: toSt.arrivalTimeSeconds,
@@ -186,6 +188,14 @@ export async function GET(req: NextRequest) {
         eq(fromSt.tripId, tripsAlias.tripId),
         eq(fromSt.providerId, tripsAlias.providerId),
         eq(fromSt.gtfsVersionId, tripsAlias.gtfsVersionId)
+      )
+    )
+    .leftJoin(
+      routesAlias,
+      and(
+        eq(tripsAlias.routeId, routesAlias.routeId),
+        eq(tripsAlias.providerId, routesAlias.providerId),
+        eq(tripsAlias.gtfsVersionId, routesAlias.gtfsVersionId)
       )
     )
     .where(
@@ -211,7 +221,7 @@ export async function GET(req: NextRequest) {
     const trips = tripsByStopName.get(stopName) ?? []
     trips.push({
       tripId: r.tripId,
-      routeId: r.routeId,
+      routeId: r.routeShortName ?? r.routeId,
       headsign: r.headsign,
       departureTime: secondsToHHMM(r.depSec!),
       arrivalTime: secondsToHHMM(r.arrSec!),
