@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '../../lib/db/client'
 import { gtfsVersions } from '../../lib/db/schema'
 
@@ -22,10 +22,16 @@ export async function checkUpdate(url: string, providerId: string): Promise<Upda
 
   const newHash = etag ? `etag:${etag}` : lastModified ? `lm:${lastModified}` : `ts:${Date.now()}`
 
+  // staging は失敗残骸の可能性があるため除外し、active/archived のみを比較対象とする
   const latest = await db
     .select({ sourceHash: gtfsVersions.sourceHash })
     .from(gtfsVersions)
-    .where(eq(gtfsVersions.providerId, providerId))
+    .where(
+      and(
+        eq(gtfsVersions.providerId, providerId),
+        inArray(gtfsVersions.status, ['active', 'archived'])
+      )
+    )
     .orderBy(desc(gtfsVersions.createdAt))
     .limit(1)
 
