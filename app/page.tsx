@@ -391,6 +391,13 @@ function SearchPageContent() {
     if (!fromStop || !toStop) return
     const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
     const resolvedTime = specifiedTime
+
+    // 「戻る」時に入力状態を復元するため、ホームURLに from/to を書き込んでおく
+    const homeParams = new URLSearchParams(searchParams.toString())
+    homeParams.set('from', fromStop)
+    homeParams.set('to', toStop)
+    router.replace(`/?${homeParams.toString()}`)
+
     const params = new URLSearchParams({
       from: fromStop,
       to: toStop,
