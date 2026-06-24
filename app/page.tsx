@@ -42,10 +42,10 @@ function getNowTime(): string {
   return `${hh}:${mm}`
 }
 
-async function fetchStopSuggestions(query: string): Promise<string[]> {
+async function fetchStopSuggestions(query: string, provider: string): Promise<string[]> {
   if (query.length === 0) return []
   const res = await fetch(
-    `/api/stops/search?q=${encodeURIComponent(query)}&provider=nagoya_city_bus`
+    `/api/stops/search?q=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}`
   )
   if (!res.ok) return []
   const json = await res.json()
@@ -263,6 +263,8 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
+
   const [fromStop, setFromStop] = useState(() => searchParams.get('from') ?? '')
   const [toStop, setToStop] = useState(() => searchParams.get('to') ?? '')
   const [fromData, setFromData] = useState<string[]>([])
@@ -303,7 +305,7 @@ function SearchPageContent() {
     }
     setFromLoading(true)
     fromDebounceRef.current = setTimeout(async () => {
-      const suggestions = await fetchStopSuggestions(value)
+      const suggestions = await fetchStopSuggestions(value, provider)
       setFromData(suggestions)
       setFromLoading(false)
     }, 300)
@@ -318,7 +320,7 @@ function SearchPageContent() {
     }
     setToLoading(true)
     toDebounceRef.current = setTimeout(async () => {
-      const suggestions = await fetchStopSuggestions(value)
+      const suggestions = await fetchStopSuggestions(value, provider)
       setToData(suggestions)
       setToLoading(false)
     }, 300)
@@ -379,6 +381,7 @@ function SearchPageContent() {
       dayType: resolvedDayType,
       time: resolvedTime,
       timeMode,
+      provider,
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())

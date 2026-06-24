@@ -93,6 +93,7 @@ function SearchResultContent() {
   const dayType = searchParams.get('dayType') ?? 'weekday'
   const time = searchParams.get('time') ?? ''
   const timeMode = searchParams.get('timeMode') ?? 'now'
+  const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   const [results, setResults] = useState<DirectRouteResult[]>([])
   const [loading, setLoading] = useState(!!(from && to))
@@ -107,7 +108,7 @@ function SearchResultContent() {
     const date = getDayTypeDate(dayType)
     const controller = new AbortController()
     fetch(
-      `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=nagoya_city_bus`,
+      `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
       { signal: controller.signal }
     )
       .then((r) => r.json())
@@ -122,7 +123,7 @@ function SearchResultContent() {
       })
       .finally(() => setLoading(false))
     return () => controller.abort()
-  }, [from, to, dayType])
+  }, [from, to, dayType, provider])
 
   const timeSeconds = timeToSeconds(time || '00:00')
   const isArriveMode = timeMode === 'arrive'
@@ -146,7 +147,7 @@ function SearchResultContent() {
             size="xs"
             leftSection={<IconArrowLeft size={rem(14)} stroke={2} />}
             onClick={() => {
-              const params = new URLSearchParams({ from, to, dayType, time, timeMode })
+              const params = new URLSearchParams({ from, to, dayType, time, timeMode, provider })
               router.push(`/?${params.toString()}`)
             }}
             px={4}
