@@ -196,10 +196,12 @@ function SearchResultContent() {
                     if (target) removeFavorite(target.id)
                     setIsFavorited(false)
                   } else {
-                    const uniqueProviders = [...new Set(results.map(r => r.providerDisplayName))]
-                    const providerLabel = uniqueProviders.length > 0
-                      ? uniqueProviders.join('・')
-                      : areaConfig.providerDisplayNames.join('・')
+                    const providerCounts = new Map<string, number>()
+                    for (const r of results) {
+                      providerCounts.set(r.providerDisplayName, (providerCounts.get(r.providerDisplayName) ?? 0) + 1)
+                    }
+                    const topProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+                    const providerLabel = topProvider ?? areaConfig.providerDisplayNames[0]
                     addFavorite(from, to, area, providerLabel)
                     setIsFavorited(true)
                   }
