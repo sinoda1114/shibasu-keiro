@@ -196,7 +196,11 @@ function SearchResultContent() {
                     if (target) removeFavorite(target.id)
                     setIsFavorited(false)
                   } else {
-                    addFavorite(from, to, area, areaConfig.providerDisplayNames.join('・'))
+                    const uniqueProviders = [...new Set(results.map(r => r.providerDisplayName))]
+                    const providerLabel = uniqueProviders.length > 0
+                      ? uniqueProviders.join('・')
+                      : areaConfig.providerDisplayNames.join('・')
+                    addFavorite(from, to, area, providerLabel)
                     setIsFavorited(true)
                   }
                 }}
