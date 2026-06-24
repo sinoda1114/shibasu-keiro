@@ -369,7 +369,7 @@ function SearchPageContent() {
           </span>
           {isFav && (
             <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
-              {areaConfig.providerDisplayNames.join('・')}
+              {areaConfig.providerDisplayNames[0]}
             </Badge>
           )}
         </Group>
