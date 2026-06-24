@@ -29,11 +29,15 @@ export async function GET(req: NextRequest) {
     .where(
       and(
         eq(busStops.providerId, providerId),
-        like(busStops.stopName, `${q}%`)
+        like(busStops.stopName, `%${q}%`)
       )
     )
     .groupBy(busStops.stopName)
-    .orderBy(sql`length(${busStops.stopName})`, busStops.stopName)
+    .orderBy(
+      sql`CASE WHEN ${busStops.stopName} LIKE ${q + '%'} THEN 0 ELSE 1 END`,
+      sql`length(${busStops.stopName})`,
+      busStops.stopName
+    )
     .limit(20)
 
   const data: StopSearchResult[] = rows.map((r) => ({
