@@ -20,7 +20,7 @@ import {
   Popover,
   rem,
 } from '@mantine/core'
-import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
@@ -29,6 +29,7 @@ import { ProviderSelector } from '@/components/search/ProviderSelector'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
+type SearchMode = 'stop' | 'nearby'
 
 function getTodayDayType(): DayType {
   const day = new Date().getDay()
@@ -268,6 +269,8 @@ function SearchPageContent() {
   const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
 
 
+  const [searchMode, setSearchMode] = useState<SearchMode>('stop')
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [fromStop, setFromStop] = useState(() => searchParams.get('from') ?? '')
   const [toStop, setToStop] = useState(() => searchParams.get('to') ?? '')
   const [fromData, setFromData] = useState<string[]>([])
@@ -402,7 +405,34 @@ function SearchPageContent() {
     router.push(`/search?${params.toString()}`)
   }
 
+  const handleNearbySearch = () => {
+    if (!toStop) return
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLoading(false)
+        const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
+        const params = new URLSearchParams({
+          lat: String(pos.coords.latitude),
+          lon: String(pos.coords.longitude),
+          to: toStop,
+          dayType: resolvedDayType,
+          time: specifiedTime,
+          timeMode,
+          provider,
+        })
+        router.push(`/search?${params.toString()}`)
+      },
+      () => {
+        setGpsLoading(false)
+        alert('現在地を取得できませんでした。位置情報の許可を確認してください。')
+      },
+      { timeout: 10000, maximumAge: 30000 }
+    )
+  }
+
   const isSearchDisabled = !fromStop.trim() || !toStop.trim()
+  const isNearbySearchDisabled = !toStop.trim() || gpsLoading
 
   return (
     <Container size="sm" py="md" px="md">
@@ -418,65 +448,84 @@ function SearchPageContent() {
 
         <ProviderSelector value={provider} onChange={handleProviderChange} />
 
+        <SegmentedControl
+          value={searchMode}
+          onChange={(v) => setSearchMode(v as SearchMode)}
+          data={[
+            { label: 'バス停で探す', value: 'stop' },
+            { label: '📍 近くから探す', value: 'nearby' },
+          ]}
+          radius="md"
+          fullWidth
+        />
+
         <Card shadow="sm" radius="lg" withBorder p="md">
-          <form onSubmit={(e) => { e.preventDefault(); handleSearch() }}>
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            if (searchMode === 'nearby') handleNearbySearch()
+            else handleSearch()
+          }}>
             <Stack gap="md">
               {/* 出発・到着バス停 */}
               <Stack gap="xs">
-                <Autocomplete
-                  label="出発バス停"
-                  placeholder="例: 栄"
-                  name="from"
-                  autoComplete="off"
-                  data={fromData}
-                  value={fromStop}
-                  onChange={handleFromChange}
-                  onFocus={handleFromFocus}
-                  maxDropdownHeight={240}
-                  radius="md"
-                  size="md"
-                  comboboxProps={{ shadow: 'md' }}
-                  renderOption={renderStopOption}
-                  rightSection={
-                    fromLoading ? (
-                      <Loader size="xs" />
-                    ) : fromStop ? (
+                {searchMode === 'stop' && (
+                  <>
+                    <Autocomplete
+                      label="出発バス停"
+                      placeholder="例: 栄"
+                      name="from"
+                      autoComplete="off"
+                      data={fromData}
+                      value={fromStop}
+                      onChange={handleFromChange}
+                      onFocus={handleFromFocus}
+                      maxDropdownHeight={240}
+                      radius="md"
+                      size="md"
+                      comboboxProps={{ shadow: 'md' }}
+                      renderOption={renderStopOption}
+                      rightSection={
+                        fromLoading ? (
+                          <Loader size="xs" />
+                        ) : fromStop ? (
+                          <ActionIcon
+                            variant="transparent"
+                            color="gray"
+                            size="sm"
+                            onClick={() => { setFromStop(''); setFromData(getQuickAccessStops()) }}
+                            aria-label="クリア"
+                          >
+                            <IconX size={14} />
+                          </ActionIcon>
+                        ) : undefined
+                      }
+                    />
+
+                    {/* 入れ替えボタン */}
+                    <Box style={{ display: 'flex', justifyContent: 'center' }}>
                       <ActionIcon
-                        variant="transparent"
-                        color="gray"
-                        size="sm"
-                        onClick={() => { setFromStop(''); setFromData(getQuickAccessStops()) }}
-                        aria-label="クリア"
+                        variant="filled"
+                        color="blue"
+                        size="xl"
+                        radius="xl"
+                        type="button"
+                        onClick={handleSwap}
+                        aria-label="出発と到着を入れ替え"
+                        style={{
+                          width: rem(48),
+                          height: rem(48),
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        }}
                       >
-                        <IconX size={14} />
+                        <IconArrowsUpDown size={rem(22)} stroke={2} />
                       </ActionIcon>
-                    ) : undefined
-                  }
-                />
-
-                {/* 入れ替えボタン */}
-                <Box style={{ display: 'flex', justifyContent: 'center' }}>
-                  <ActionIcon
-                    variant="filled"
-                    color="blue"
-                    size="xl"
-                    radius="xl"
-                    type="button"
-                    onClick={handleSwap}
-                    aria-label="出発と到着を入れ替え"
-                    style={{
-                      width: rem(48),
-                      height: rem(48),
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    }}
-                  >
-                    <IconArrowsUpDown size={rem(22)} stroke={2} />
-                  </ActionIcon>
-                </Box>
+                    </Box>
+                  </>
+                )}
 
                 <Autocomplete
-                  label="到着バス停"
-                  placeholder="例: 金山"
+                  label={searchMode === 'nearby' ? '行き先バス停' : '到着バス停'}
+                  placeholder={searchMode === 'nearby' ? '例: 横浜駅' : '例: 金山'}
                   name="to"
                   autoComplete="off"
                   data={toData}
@@ -548,17 +597,31 @@ function SearchPageContent() {
               </Stack>
 
               {/* 検索ボタン */}
-              <Button
-                fullWidth
-                size="lg"
-                radius="md"
-                type="submit"
-                leftSection={<IconSearch size={rem(20)} stroke={2} />}
-                disabled={isSearchDisabled}
-                style={{ marginTop: rem(4) }}
-              >
-                バスを検索
-              </Button>
+              {searchMode === 'nearby' ? (
+                <Button
+                  fullWidth
+                  size="lg"
+                  radius="md"
+                  type="submit"
+                  leftSection={gpsLoading ? <Loader size="xs" color="white" /> : <IconCurrentLocation size={rem(20)} stroke={2} />}
+                  disabled={isNearbySearchDisabled}
+                  style={{ marginTop: rem(4) }}
+                >
+                  {gpsLoading ? '現在地を取得中...' : '現在地から検索'}
+                </Button>
+              ) : (
+                <Button
+                  fullWidth
+                  size="lg"
+                  radius="md"
+                  type="submit"
+                  leftSection={<IconSearch size={rem(20)} stroke={2} />}
+                  disabled={isSearchDisabled}
+                  style={{ marginTop: rem(4) }}
+                >
+                  バスを検索
+                </Button>
+              )}
             </Stack>
           </form>
         </Card>

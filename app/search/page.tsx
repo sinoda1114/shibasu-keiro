@@ -16,10 +16,12 @@ import {
   Center,
   rem,
 } from '@mantine/core'
-import { IconArrowLeft, IconAlertCircle, IconBus, IconStar, IconClock } from '@tabler/icons-react'
+import { IconArrowLeft, IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
+import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
+import type { NearbyStop } from '@/app/api/routes/nearby/route'
 
 interface DirectRouteResult {
   tripId: string
@@ -90,13 +92,17 @@ function SearchResultContent() {
 
   const from = searchParams.get('from') ?? ''
   const to = searchParams.get('to') ?? ''
+  const lat = searchParams.get('lat')
+  const lon = searchParams.get('lon')
+  const isNearbyMode = !!(lat && lon)
   const dayType = searchParams.get('dayType') ?? 'weekday'
   const time = searchParams.get('time') ?? ''
   const timeMode = searchParams.get('timeMode') ?? 'now'
   const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   const [results, setResults] = useState<DirectRouteResult[]>([])
-  const [loading, setLoading] = useState(!!(from && to))
+  const [nearbyResults, setNearbyResults] = useState<NearbyStop[]>([])
+  const [loading, setLoading] = useState(!!(isNearbyMode ? (lat && lon && to) : (from && to)))
   const [error, setError] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -104,26 +110,48 @@ function SearchResultContent() {
   })
 
   useEffect(() => {
-    if (!from || !to) return
     const date = getDayTypeDate(dayType)
     const controller = new AbortController()
-    fetch(
-      `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
-      { signal: controller.signal }
-    )
-      .then((r) => r.json())
-      .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string }) => {
-        if (json.success) setResults(json.data ?? [])
-        else setError(json.error ?? '検索に失敗しました')
-      })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          setError('通信エラーが発生しました')
-        }
-      })
-      .finally(() => setLoading(false))
+
+    if (isNearbyMode && to) {
+      fetch(
+        `/api/routes/nearby?lat=${lat}&lon=${lon}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
+        { signal: controller.signal }
+      )
+        .then((r) => r.json())
+        .then((json: { success: boolean; data?: NearbyStop[]; error?: string }) => {
+          if (json.success) setNearbyResults(json.data ?? [])
+          else setError(json.error ?? '検索に失敗しました')
+        })
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
+        })
+        .finally(() => setLoading(false))
+    } else if (from && to) {
+      fetch(
+        `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
+        { signal: controller.signal }
+      )
+        .then((r) => r.json())
+        .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string }) => {
+          if (json.success) setResults(json.data ?? [])
+          else setError(json.error ?? '検索に失敗しました')
+        })
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
+        })
+        .finally(() => setLoading(false))
+    }
+
     return () => controller.abort()
-  }, [from, to, dayType, provider])
+  }, [from, to, lat, lon, isNearbyMode, dayType, provider])
+
+  const date = getDayTypeDate(dayType)
+  const nowSec = (() => {
+    const now = new Date()
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+    return jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
+  })()
 
   const timeSeconds = timeToSeconds(time || '00:00')
   const isArriveMode = timeMode === 'arrive'
@@ -131,9 +159,6 @@ function SearchResultContent() {
     ? [...results.filter((r) => r.arrivalSeconds <= timeSeconds)].reverse()
     : results.filter((r) => r.departureSeconds >= timeSeconds)
   const lastBus = !isArriveMode && results.length > 0 ? results[results.length - 1] : null
-
-  const date = getDayTypeDate(dayType)
-
   const [nextBus, ...restBuses] = filtered
   const otherBuses = restBuses.slice(0, 4)
 
@@ -146,10 +171,7 @@ function SearchResultContent() {
             variant="subtle"
             size="xs"
             leftSection={<IconArrowLeft size={rem(14)} stroke={2} />}
-            onClick={() => {
-              const params = new URLSearchParams({ from, to, dayType, time, timeMode, provider })
-              router.push(`/?${params.toString()}`)
-            }}
+            onClick={() => router.push('/')}
             px={4}
           >
             検索に戻る
@@ -160,9 +182,12 @@ function SearchResultContent() {
         <Stack gap={8}>
           <Group gap="xs" align="center" justify="space-between" wrap="nowrap">
             <Group gap="xs" align="center" style={{ minWidth: 0 }}>
-              <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} style={{ flexShrink: 0 }} />
+              {isNearbyMode
+                ? <IconMapPin size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} style={{ flexShrink: 0 }} />
+                : <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} style={{ flexShrink: 0 }} />
+              }
               <Title order={2} size="h4" fw={800} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {from} → {to}
+                {isNearbyMode ? `現在地 → ${to}` : `${from} → ${to}`}
               </Title>
             </Group>
             <Button
@@ -197,17 +222,19 @@ function SearchResultContent() {
               </Badge>
             )}
           </Group>
-          <Button
-            variant="light"
-            color="blue"
-            size="sm"
-            radius="md"
-            leftSection={<IconClock size={rem(16)} stroke={1.5} />}
-            onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(provider)}`)}
-            style={{ alignSelf: 'flex-start' }}
-          >
-            {from}の時刻表を見る
-          </Button>
+          {!isNearbyMode && from && (
+            <Button
+              variant="light"
+              color="blue"
+              size="sm"
+              radius="md"
+              leftSection={<IconClock size={rem(16)} stroke={1.5} />}
+              onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(provider)}`)}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              {from}の時刻表を見る
+            </Button>
+          )}
         </Stack>
 
         {/* ローディング */}
@@ -229,8 +256,38 @@ function SearchResultContent() {
           </Alert>
         )}
 
-        {/* 結果なし */}
-        {!loading && !error && filtered.length === 0 && (
+        {/* 近くから探す — 結果 */}
+        {!loading && !error && isNearbyMode && nearbyResults.length === 0 && (
+          <Alert
+            icon={<IconAlertCircle size={rem(16)} />}
+            title="近くにバス停が見つかりませんでした"
+            color="orange"
+            radius="md"
+          >
+            現在地から500m以内に{to}への直通便がありません。ダイヤ区分や時刻を変えてお試しください。
+          </Alert>
+        )}
+        {!loading && !error && isNearbyMode && nearbyResults.length > 0 && (
+          <Stack gap="lg">
+            <Text size="sm" c="dimmed">
+              近くのバス停から {to} への直通便
+            </Text>
+            {nearbyResults.map((s) => (
+              <NearbyResultGroup
+                key={s.stopName}
+                stopName={s.stopName}
+                distanceM={s.distanceM}
+                trips={s.trips}
+                toStopName={to}
+                date={date}
+                currentSeconds={nowSec}
+              />
+            ))}
+          </Stack>
+        )}
+
+        {/* 通常検索 — 結果なし */}
+        {!loading && !error && !isNearbyMode && filtered.length === 0 && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
             title="バスが見つかりませんでした"
@@ -243,8 +300,8 @@ function SearchResultContent() {
           </Alert>
         )}
 
-        {/* 次のバス（強調表示） */}
-        {!loading && !error && nextBus && (
+        {/* 通常検索 — 次のバス（強調表示） */}
+        {!loading && !error && !isNearbyMode && nextBus && (
           <Stack gap="xs">
             <Text size="sm" fw={700} c="blue.7">
               {isArriveMode ? '最後に乗れるバス' : '次に乗れるバス'}
@@ -265,8 +322,8 @@ function SearchResultContent() {
           </Stack>
         )}
 
-        {/* 2本目以降の候補 */}
-        {!loading && !error && otherBuses.length > 0 && (
+        {/* 通常検索 — 2本目以降の候補 */}
+        {!loading && !error && !isNearbyMode && otherBuses.length > 0 && (
           <Stack gap="xs">
             <Text size="sm" fw={600} c="gray.7">
               {isArriveMode ? 'その前のバス' : 'その後のバス'}
@@ -291,8 +348,8 @@ function SearchResultContent() {
           </Stack>
         )}
 
-        {/* 終バス */}
-        {!loading && !error && lastBus && (
+        {/* 通常検索 — 終バス */}
+        {!loading && !error && !isNearbyMode && lastBus && (
           <>
             <Divider label="終バス" labelPosition="left" c="dimmed" />
             <SearchResultCard
