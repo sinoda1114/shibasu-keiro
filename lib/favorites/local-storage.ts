@@ -1,5 +1,3 @@
-import { PROVIDERS } from '@/lib/providers/providers'
-
 export interface FavoriteRoute {
   id: string
   providerId: string
@@ -27,11 +25,11 @@ export function getFavorites(): FavoriteRoute[] {
   }
 }
 
-export function addFavorite(from: string, to: string): FavoriteRoute {
+export function addFavorite(from: string, to: string, providerId: string): FavoriteRoute {
   const favorites = getFavorites()
   const newItem: FavoriteRoute = {
     id: generateId(),
-    providerId: PROVIDERS.NAGOYA_CITY_BUS,
+    providerId,
     fromStopName: from,
     toStopName: to,
     createdAt: new Date().toISOString(),

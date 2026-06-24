@@ -100,7 +100,7 @@ function SearchResultContent() {
   const [error, setError] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(() => {
     if (typeof window === 'undefined') return false
-    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to)
+    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.providerId === provider)
   })
 
   useEffect(() => {
@@ -174,11 +174,11 @@ function SearchResultContent() {
               aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
               onClick={() => {
                 if (isFavorited) {
-                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to)
+                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.providerId === provider)
                   if (target) removeFavorite(target.id)
                   setIsFavorited(false)
                 } else {
-                  addFavorite(from, to)
+                  addFavorite(from, to, provider)
                   setIsFavorited(true)
                 }
               }}
