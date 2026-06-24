@@ -284,6 +284,15 @@ function SearchPageContent() {
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
   const [stopFavorites, setStopFavorites] = useState<string[]>(() => getStopFavorites())
 
+  // 「戻る」操作などでsearchParamsが変わった際にReact stateを同期する
+  // （useState lazy initは初回mountのみ実行されるため、popstateで変わったURLに追随できない）
+  useEffect(() => {
+    const urlFrom = searchParams.get('from') ?? ''
+    const urlTo = searchParams.get('to') ?? ''
+    setFromStop(urlFrom)
+    setToStop(urlTo)
+  }, [searchParams])
+
   const handleProviderChange = (newProvider: string) => {
     setFromStop('')
     setToStop('')

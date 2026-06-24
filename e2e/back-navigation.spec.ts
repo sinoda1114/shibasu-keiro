@@ -20,8 +20,11 @@ test.describe('検索後の「戻る」でステートを復元', () => {
     await page.goBack()
     await expect(page).toHaveURL(/\//)
 
-    // プロバイダーが相鉄バスのまま
+    // プロバイダーが相鉄バスのまま（URLとUI両方確認）
     await expect(page).toHaveURL(/provider=sotetsu_bus/)
+    // 入力欄も復元されている
+    await expect(page.locator('[name="from"]')).toHaveValue('西谷妙福寺前')
+    await expect(page.locator('[name="to"]')).toHaveValue('横浜駅西口')
   })
 
   test('検索後に戻るとバス停名が復元される', async ({ page }) => {
