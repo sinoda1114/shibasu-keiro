@@ -249,6 +249,20 @@ export async function importGtfs(
       .update(gtfsImportJobs)
       .set({ status: 'failed', finishedAt: new Date().toISOString(), errorMessage: msg })
       .where(eq(gtfsImportJobs.id, jobId))
+
+    // 途中まで書き込んだゴミデータを FK 依存順に削除する
+    try {
+      await db.delete(busStopTimes).where(eq(busStopTimes.gtfsVersionId, versionId))
+      await db.delete(busTrips).where(eq(busTrips.gtfsVersionId, versionId))
+      await db.delete(busRoutes).where(eq(busRoutes.gtfsVersionId, versionId))
+      await db.delete(busStops).where(eq(busStops.gtfsVersionId, versionId))
+      await db.delete(gtfsCalendarDates).where(eq(gtfsCalendarDates.gtfsVersionId, versionId))
+      await db.delete(gtfsCalendar).where(eq(gtfsCalendar.gtfsVersionId, versionId))
+      await db.delete(gtfsVersions).where(eq(gtfsVersions.id, versionId))
+    } catch (cleanupErr) {
+      console.error('クリーンアップ中にエラーが発生しました:', cleanupErr)
+    }
+
     throw err
   }
 }
