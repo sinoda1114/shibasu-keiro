@@ -171,7 +171,7 @@ function SearchResultContent() {
             variant="subtle"
             size="xs"
             leftSection={<IconArrowLeft size={rem(14)} stroke={2} />}
-            onClick={() => router.push('/')}
+            onClick={() => router.push(`/?${searchParams.toString()}`)}
             px={4}
           >
             検索に戻る
