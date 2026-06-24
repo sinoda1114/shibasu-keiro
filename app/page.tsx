@@ -391,6 +391,16 @@ function SearchPageContent() {
     if (!fromStop || !toStop) return
     const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
     const resolvedTime = specifiedTime
+
+    // 「戻る」時に入力状態を復元するため、ホームURLを同期的に更新する
+    // router.replace は直後の router.push でキャンセルされることがあるため
+    // window.history.replaceState を使う（Next.js ナビゲーションに干渉しない）
+    const homeParams = new URLSearchParams(searchParams.toString())
+    homeParams.set('provider', provider)
+    homeParams.set('from', fromStop)
+    homeParams.set('to', toStop)
+    window.history.replaceState(null, '', `/?${homeParams.toString()}`)
+
     const params = new URLSearchParams({
       from: fromStop,
       to: toStop,
