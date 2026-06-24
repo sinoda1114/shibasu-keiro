@@ -23,10 +23,10 @@ import {
 } from '@mantine/core'
 import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
-import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
+import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 import { AreaSelector } from '@/components/search/AreaSelector'
-import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
+import { DEFAULT_AREA_ID, getAreaConfig } from '@/lib/providers/providers'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
@@ -282,7 +282,7 @@ function SearchPageContent() {
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
-  const [stopFavorites, setStopFavorites] = useState<string[]>(() => getStopFavorites())
+  const [stopFavorites, setStopFavorites] = useState<StopFavorite[]>(() => getStopFavorites())
 
   const handleAreaChange = (newArea: string) => {
     setFromStop('')
@@ -298,8 +298,10 @@ function SearchPageContent() {
   const toDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const getQuickAccessStops = (): string[] => {
-    const favs = getStopFavorites()
-    const seen = new Set(favs)
+    const areaFavNames = getStopFavorites()
+      .filter(f => f.areaId === area)
+      .map(f => f.stopName)
+    const seen = new Set(areaFavNames)
     const recentStops: string[] = []
     for (const h of history) {
       for (const s of [h.from, h.to]) {
@@ -309,7 +311,7 @@ function SearchPageContent() {
         }
       }
     }
-    return [...favs, ...recentStops]
+    return [...areaFavNames, ...recentStops]
   }
 
   const handleFromChange = (value: string) => {
@@ -351,18 +353,26 @@ function SearchPageContent() {
   }
 
   const handleStarToggle = (stopName: string) => {
-    toggleStopFavorite(stopName)
+    toggleStopFavorite(stopName, area)
     setStopFavorites(getStopFavorites())
   }
 
   const renderStopOption = ({ option }: { option: string | { value: string; label?: string } }) => {
     const stopName = typeof option === 'string' ? option : option.value
-    const isFav = stopFavorites.includes(stopName)
+    const isFav = stopFavorites.some(f => f.stopName === stopName && f.areaId === area)
+    const areaConfig = getAreaConfig(area)
     return (
       <Group justify="space-between" style={{ width: '100%' }} wrap="nowrap">
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {stopName}
-        </span>
+        <Group gap={6} style={{ flex: 1, minWidth: 0 }} wrap="nowrap">
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {stopName}
+          </span>
+          {isFav && (
+            <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
+              {areaConfig.providerDisplayNames.join('・')}
+            </Badge>
+          )}
+        </Group>
         <ActionIcon
           variant="transparent"
           color={isFav ? 'yellow' : 'gray'}
