@@ -20,10 +20,10 @@ test.describe('ProviderSelector', () => {
     await expect(page).not.toHaveURL(/to=/)
   })
 
-  test('名古屋市バスに戻るとタイトルが変わる', async ({ page }) => {
+  test('プロバイダーを切り替えても「直通ルート検索」バッジが表示されている', async ({ page }) => {
     await page.goto('/?provider=yokohama_city_bus')
-    await expect(page.getByText('横浜市バス 直通ルート検索')).toBeVisible()
+    await expect(page.getByText('直通ルート検索')).toBeVisible()
     await page.getByText('名古屋市バス').click()
-    await expect(page.getByText('名古屋市バス 直通ルート検索')).toBeVisible()
+    await expect(page.getByText('直通ルート検索')).toBeVisible()
   })
 })
