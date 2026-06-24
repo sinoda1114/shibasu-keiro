@@ -63,3 +63,10 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           GTFS_PROVIDER: yokohama_city_bus
         run: pnpm tsx scripts/gtfs/index.ts
+
+      - name: Run ODPT import (相鉄バス)
+        if: env.YOKOHAMA_GTFS_URL != ''
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: pnpm tsx scripts/odpt/index.ts
