@@ -25,7 +25,8 @@ import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLo
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
-import { ProviderSelector } from '@/components/search/ProviderSelector'
+import { AreaSelector } from '@/components/search/AreaSelector'
+import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
@@ -45,10 +46,10 @@ function getNowTime(): string {
   return `${hh}:${mm}`
 }
 
-async function fetchStopSuggestions(query: string, provider: string): Promise<string[]> {
+async function fetchStopSuggestions(query: string, area: string): Promise<string[]> {
   if (query.length === 0) return []
   const res = await fetch(
-    `/api/stops/search?q=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}`
+    `/api/stops/search?q=${encodeURIComponent(query)}&area=${encodeURIComponent(area)}`
   )
   if (!res.ok) return []
   const json = await res.json()
@@ -266,8 +267,7 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
-
+  const area = searchParams.get('area') ?? DEFAULT_AREA_ID
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -284,11 +284,11 @@ function SearchPageContent() {
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
   const [stopFavorites, setStopFavorites] = useState<string[]>(() => getStopFavorites())
 
-  const handleProviderChange = (newProvider: string) => {
+  const handleAreaChange = (newArea: string) => {
     setFromStop('')
     setToStop('')
     const params = new URLSearchParams(searchParams.toString())
-    params.set('provider', newProvider)
+    params.set('area', newArea)
     params.delete('from')
     params.delete('to')
     router.replace(`/?${params.toString()}`)
@@ -321,7 +321,7 @@ function SearchPageContent() {
     }
     setFromLoading(true)
     fromDebounceRef.current = setTimeout(async () => {
-      const suggestions = await fetchStopSuggestions(value, provider)
+      const suggestions = await fetchStopSuggestions(value, area)
       setFromData(suggestions)
       setFromLoading(false)
     }, 300)
@@ -336,7 +336,7 @@ function SearchPageContent() {
     }
     setToLoading(true)
     toDebounceRef.current = setTimeout(async () => {
-      const suggestions = await fetchStopSuggestions(value, provider)
+      const suggestions = await fetchStopSuggestions(value, area)
       setToData(suggestions)
       setToLoading(false)
     }, 300)
@@ -393,10 +393,8 @@ function SearchPageContent() {
     const resolvedTime = specifiedTime
 
     // 「戻る」時に入力状態を復元するため、ホームURLを同期的に更新する
-    // router.replace は直後の router.push でキャンセルされることがあるため
-    // window.history.replaceState を使う（Next.js ナビゲーションに干渉しない）
     const homeParams = new URLSearchParams(searchParams.toString())
-    homeParams.set('provider', provider)
+    homeParams.set('area', area)
     homeParams.set('from', fromStop)
     homeParams.set('to', toStop)
     window.history.replaceState(null, '', `/?${homeParams.toString()}`)
@@ -407,7 +405,7 @@ function SearchPageContent() {
       dayType: resolvedDayType,
       time: resolvedTime,
       timeMode,
-      provider,
+      area,
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())
@@ -429,7 +427,7 @@ function SearchPageContent() {
           dayType: resolvedDayType,
           time: specifiedTime,
           timeMode,
-          provider,
+          area,
         })
         router.push(`/search?${params.toString()}`)
       },
@@ -456,7 +454,7 @@ function SearchPageContent() {
           </Badge>
         </Group>
 
-        <ProviderSelector value={provider} onChange={handleProviderChange} />
+        <AreaSelector value={area} onChange={handleAreaChange} />
 
         <SegmentedControl
           value={searchMode}

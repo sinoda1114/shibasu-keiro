@@ -19,6 +19,7 @@ export interface SearchResultCardProps {
   toStopName?: string
   date?: string
   provider?: string
+  providerDisplayName?: string
 }
 
 function urgencyColor(minutes: number): string {
@@ -54,6 +55,7 @@ export function SearchResultCard({
   toStopName,
   date,
   provider = '',
+  providerDisplayName,
 }: SearchResultCardProps) {
   const [expanded, setExpanded] = useState(false)
   const canExpand = !!(tripId && fromStopName && toStopName && date)
@@ -78,6 +80,11 @@ export function SearchResultCard({
               <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {headsign} 行き
               </Text>
+              {providerDisplayName && (
+                <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+                  {providerDisplayName}
+                </Badge>
+              )}
             </Group>
             {minutesUntil !== null && (
               <Badge color={urgencyColor(minutesUntil)} variant="filled" size="lg" radius="sm" style={{ flexShrink: 0 }}>
@@ -153,6 +160,11 @@ export function SearchResultCard({
             <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {headsign} 行き
             </Text>
+            {providerDisplayName && (
+              <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+                {providerDisplayName}
+              </Badge>
+            )}
           </Group>
           <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
             <Stack gap={0} align="center">
@@ -183,6 +195,11 @@ export function SearchResultCard({
             <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {headsign} 行き
             </Text>
+            {providerDisplayName && (
+              <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+                {providerDisplayName}
+              </Badge>
+            )}
           </Group>
           <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
             <Stack gap={0} align="center">
