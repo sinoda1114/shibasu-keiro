@@ -16,7 +16,7 @@ export interface ProviderConfig {
 
 export const PROVIDER_CONFIGS: ProviderConfig[] = [
   { id: PROVIDERS.NAGOYA_CITY_BUS, displayName: '名古屋市バス', shortName: '名古屋市バス', areaName: '名古屋市', icon: '🏯' },
-  { id: PROVIDERS.YOKOHAMA_CITY_BUS, displayName: '横浜市バス', shortName: '横浜市バス', areaName: '横浜市', icon: '⚓' },
+  { id: PROVIDERS.YOKOHAMA_CITY_BUS, displayName: '横浜市営バス', shortName: '横浜市営バス', areaName: '横浜市', icon: '⚓' },
   { id: PROVIDERS.SOTETSU_BUS, displayName: '相鉄バス', shortName: '相鉄バス', areaName: '横浜市', icon: '🚌' },
 ]
 
@@ -43,7 +43,7 @@ export const AREA_CONFIGS: AreaConfig[] = [
     displayName: '横浜',
     icon: '⚓',
     providerIds: [PROVIDERS.YOKOHAMA_CITY_BUS, PROVIDERS.SOTETSU_BUS],
-    providerDisplayNames: ['横浜市バス', '相鉄バス'],
+    providerDisplayNames: ['横浜市営バス', '相鉄バス'],
   },
 ]
 

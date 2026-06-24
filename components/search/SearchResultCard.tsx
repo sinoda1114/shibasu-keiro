@@ -81,7 +81,7 @@ export function SearchResultCard({
                 {headsign} 行き
               </Text>
               {providerDisplayName && (
-                <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+                <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
                   {providerDisplayName}
                 </Badge>
               )}
@@ -161,7 +161,7 @@ export function SearchResultCard({
               {headsign} 行き
             </Text>
             {providerDisplayName && (
-              <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+              <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
                 {providerDisplayName}
               </Badge>
             )}
@@ -196,7 +196,7 @@ export function SearchResultCard({
               {headsign} 行き
             </Text>
             {providerDisplayName && (
-              <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+              <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
                 {providerDisplayName}
               </Badge>
             )}
