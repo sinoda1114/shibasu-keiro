@@ -1,6 +1,6 @@
 'use client'
 
-import { SegmentedControl } from '@mantine/core'
+import { SegmentedControl, Group, Text } from '@mantine/core'
 import { PROVIDER_CONFIGS } from '@/lib/providers/providers'
 
 interface ProviderSelectorProps {
@@ -11,7 +11,12 @@ interface ProviderSelectorProps {
 export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
   const data = PROVIDER_CONFIGS.map((config) => ({
     value: config.id,
-    label: config.displayName,
+    label: (
+      <Group gap={4} align="center" wrap="nowrap" justify="center">
+        <span role="img" aria-label={config.areaName}>{config.icon}</span>
+        <Text size="xs" fw={500}>{config.displayName}</Text>
+      </Group>
+    ),
   }))
 
   return (
@@ -20,7 +25,7 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
       value={value}
       onChange={onChange}
       fullWidth
-      size="xs"
+      size="sm"
     />
   )
 }
