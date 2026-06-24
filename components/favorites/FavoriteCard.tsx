@@ -54,7 +54,7 @@ export function FavoriteCard({
             {route.toStopName}
           </Text>
           {route.providerDisplayName && (
-            <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+            <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
               {route.providerDisplayName}
             </Badge>
           )}
