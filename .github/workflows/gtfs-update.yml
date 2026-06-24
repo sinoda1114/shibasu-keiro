@@ -27,6 +27,8 @@ jobs:
   update:
     name: Check and import GTFS
     runs-on: ubuntu-latest
+    env:
+      YOKOHAMA_GTFS_URL: ${{ secrets.YOKOHAMA_GTFS_URL }}
 
     steps:
       - name: Checkout
@@ -55,10 +57,9 @@ jobs:
         run: pnpm tsx scripts/gtfs/index.ts
 
       - name: Run GTFS update (横浜市バス)
-        if: ${{ secrets.YOKOHAMA_GTFS_URL != '' }}
+        if: env.YOKOHAMA_GTFS_URL != ''
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           GTFS_PROVIDER: yokohama_city_bus
-          YOKOHAMA_GTFS_URL: ${{ secrets.YOKOHAMA_GTFS_URL }}
         run: pnpm tsx scripts/gtfs/index.ts
