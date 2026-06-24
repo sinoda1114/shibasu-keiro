@@ -16,7 +16,7 @@ import {
   Center,
   rem,
 } from '@mantine/core'
-import { IconArrowLeft, IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin } from '@tabler/icons-react'
+import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
@@ -165,19 +165,6 @@ function SearchResultContent() {
   return (
     <Container size="sm" py="md" px="md">
       <Stack gap="md">
-        {/* ヘッダー */}
-        <Group gap="xs" align="center">
-          <Button
-            variant="subtle"
-            size="xs"
-            leftSection={<IconArrowLeft size={rem(14)} stroke={2} />}
-            onClick={() => router.push(`/?${searchParams.toString()}`)}
-            px={4}
-          >
-            検索に戻る
-          </Button>
-        </Group>
-
         {/* 検索条件の概要 */}
         <Stack gap={8}>
           <Group gap="xs" align="center" justify="space-between" wrap="nowrap">
