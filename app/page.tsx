@@ -24,6 +24,8 @@ import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar } from '@table
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
+import { PROVIDER_CONFIGS } from '@/lib/providers/providers'
+import { ProviderSelector } from '@/components/search/ProviderSelector'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
@@ -265,6 +267,7 @@ function SearchPageContent() {
 
   const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
 
+
   const [fromStop, setFromStop] = useState(() => searchParams.get('from') ?? '')
   const [toStop, setToStop] = useState(() => searchParams.get('to') ?? '')
   const [fromData, setFromData] = useState<string[]>([])
@@ -277,6 +280,16 @@ function SearchPageContent() {
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
   const [stopFavorites, setStopFavorites] = useState<string[]>(() => getStopFavorites())
+
+  const handleProviderChange = (newProvider: string) => {
+    setFromStop('')
+    setToStop('')
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('provider', newProvider)
+    params.delete('from')
+    params.delete('to')
+    router.replace(`/?${params.toString()}`)
+  }
 
   const fromDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -399,9 +412,11 @@ function SearchPageContent() {
             市バスかんたん検索
           </Title>
           <Text c="dimmed" size="sm">
-            名古屋市バス 直通ルート検索
+            {PROVIDER_CONFIGS.find((p) => p.id === provider)?.displayName ?? '市バス'} 直通ルート検索
           </Text>
         </Stack>
+
+        <ProviderSelector value={provider} onChange={handleProviderChange} />
 
         <Card shadow="sm" radius="lg" withBorder p="md">
           <form onSubmit={(e) => { e.preventDefault(); handleSearch() }}>
