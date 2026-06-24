@@ -13,7 +13,8 @@ vi.mock('../../../lib/db/client', () => ({
   db: mockDb,
 }))
 
-import { isOdptFilesUrl, resolveOdptUrl, checkUpdate } from '../check-update'
+import { isOdptFilesUrl, resolveOdptUrl } from '../utils'
+import { checkUpdate } from '../check-update'
 
 function setupDbChain(result: { sourceHash: string }[] = []) {
   mockDb.select.mockReturnValue(mockDb)

@@ -1,13 +1,20 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { isOdptFilesUrl, resolveOdptUrl } from './utils'
 
 /**
  * GTFS ZIPをダウンロードして展開する
  */
 export async function downloadAndExtract(url: string, destDir: string): Promise<void> {
-  console.log(`Downloading GTFS from ${url}...`)
-  const res = await fetch(url)
+  let downloadUrl = url
+  if (isOdptFilesUrl(url)) {
+    const resolved = await resolveOdptUrl(url)
+    if (!resolved) throw new Error('ODPT: 利用可能なGTFSデータが見つかりませんでした（過去6ヶ月を確認）')
+    downloadUrl = resolved.blobUrl
+  }
+  console.log(`Downloading GTFS from ${downloadUrl.split('?')[0]}...`)
+  const res = await fetch(downloadUrl)
   if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`)
 
   const buf = Buffer.from(await res.arrayBuffer())
