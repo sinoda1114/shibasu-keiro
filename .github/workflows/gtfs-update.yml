@@ -10,6 +10,7 @@
 #   TURSO_DATABASE_URL  : libsql://xxxxx.turso.io
 #   TURSO_AUTH_TOKEN    : eyJhbGci...
 #   NAGOYA_GTFS_URL     : 名古屋市GTFS-JP ZIPのURL
+#   YOKOHAMA_GTFS_URL   : 横浜市GTFS-JP ZIPのURL（オプション、未設定時はスキップ）
 
 name: GTFS Auto Update
 
@@ -45,9 +46,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run GTFS update
+      - name: Run GTFS update (名古屋市バス)
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          GTFS_PROVIDER: nagoya_city_bus
           NAGOYA_GTFS_URL: ${{ secrets.NAGOYA_GTFS_URL }}
+        run: pnpm tsx scripts/gtfs/index.ts
+
+      - name: Run GTFS update (横浜市バス)
+        if: ${{ secrets.YOKOHAMA_GTFS_URL != '' }}
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          GTFS_PROVIDER: yokohama_city_bus
+          YOKOHAMA_GTFS_URL: ${{ secrets.YOKOHAMA_GTFS_URL }}
         run: pnpm tsx scripts/gtfs/index.ts
