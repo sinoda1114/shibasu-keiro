@@ -659,6 +659,12 @@ function SearchPageContent() {
   )
 }
 
+function SearchPageContentWithParamKey() {
+  const searchParams = useSearchParams()
+
+  return <SearchPageContent key={searchParams.toString()} />
+}
+
 export default function SearchPage() {
   return (
     <Suspense
@@ -668,7 +674,7 @@ export default function SearchPage() {
         </Container>
       }
     >
-      <SearchPageContent />
+      <SearchPageContentWithParamKey />
     </Suspense>
   )
 }
