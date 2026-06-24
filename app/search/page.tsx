@@ -336,6 +336,7 @@ function SearchResultContent() {
               fromStopName={from}
               toStopName={to}
               date={date}
+              provider={provider}
             />
           </Stack>
         )}
@@ -360,6 +361,7 @@ function SearchResultContent() {
                   fromStopName={from}
                   toStopName={to}
                   date={date}
+                  provider={provider}
                 />
               ))}
             </Stack>
@@ -382,6 +384,7 @@ function SearchResultContent() {
               fromStopName={from}
               toStopName={to}
               date={date}
+              provider={provider}
             />
           </>
         )}

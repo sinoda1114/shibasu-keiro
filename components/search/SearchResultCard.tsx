@@ -18,6 +18,7 @@ export interface SearchResultCardProps {
   fromStopName?: string
   toStopName?: string
   date?: string
+  provider?: string
 }
 
 function urgencyColor(minutes: number): string {
@@ -52,6 +53,7 @@ export function SearchResultCard({
   fromStopName,
   toStopName,
   date,
+  provider = '',
 }: SearchResultCardProps) {
   const [expanded, setExpanded] = useState(false)
   const canExpand = !!(tripId && fromStopName && toStopName && date)
@@ -121,6 +123,7 @@ export function SearchResultCard({
                   fromStopName={fromStopName!}
                   toStopName={toStopName!}
                   date={date!}
+                  provider={provider}
                 />
               )}
             </>
@@ -218,6 +221,7 @@ export function SearchResultCard({
                 fromStopName={fromStopName!}
                 toStopName={toStopName!}
                 date={date!}
+                provider={provider}
               />
             )}
           </>
