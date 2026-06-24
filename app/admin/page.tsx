@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   Container,
   Title,
@@ -48,14 +49,17 @@ function formatCount(n: number): string {
   return n.toLocaleString('ja-JP')
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
+  const searchParams = useSearchParams()
+  const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
+
   const [versions, setVersions] = useState<VersionWithCounts[] | null>(null)
   const [jobs, setJobs] = useState<ImportJob[] | null>(null)
   const [versionsError, setVersionsError] = useState<string | null>(null)
   const [jobsError, setJobsError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/versions?provider=nagoya_city_bus')
+    fetch(`/api/admin/versions?provider=${encodeURIComponent(provider)}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success) {
@@ -65,10 +69,10 @@ export default function AdminPage() {
         }
       })
       .catch(() => setVersionsError('バージョン情報の取得に失敗しました'))
-  }, [])
+  }, [provider])
 
   useEffect(() => {
-    fetch('/api/admin/jobs?provider=nagoya_city_bus&limit=10')
+    fetch(`/api/admin/jobs?provider=${encodeURIComponent(provider)}&limit=10`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success) {
@@ -78,7 +82,7 @@ export default function AdminPage() {
         }
       })
       .catch(() => setJobsError('ジョブ履歴の取得に失敗しました'))
-  }, [])
+  }, [provider])
 
   const activeVersion = versions?.find((v) => v.status === 'active') ?? null
 
@@ -317,5 +321,19 @@ export default function AdminPage() {
         </Card>
       </Stack>
     </Container>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <Container size="md" py="md">
+          <Text c="dimmed">読み込み中...</Text>
+        </Container>
+      }
+    >
+      <AdminPageContent />
+    </Suspense>
   )
 }
