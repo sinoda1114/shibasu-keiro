@@ -117,7 +117,7 @@ async function queryOneProvider(
 
   const providerDisplayName =
     providerId === 'nagoya_city_bus' ? '名古屋市バス'
-    : providerId === 'yokohama_city_bus' ? '横浜市バス'
+    : providerId === 'yokohama_city_bus' ? '横浜市営バス'
     : providerId === 'sotetsu_bus' ? '相鉄バス'
     : providerId
 

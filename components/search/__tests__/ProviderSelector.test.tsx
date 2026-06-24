@@ -24,7 +24,7 @@ describe('ProviderSelector', () => {
       <ProviderSelector value="yokohama_city_bus" onChange={vi.fn()} />
     )
 
-    expect(screen.getByText('横浜市バス')).toBeInTheDocument()
+    expect(screen.getByText('横浜市営バス')).toBeInTheDocument()
     expect(screen.getByText('名古屋市バス')).toBeInTheDocument()
   })
 
@@ -35,7 +35,7 @@ describe('ProviderSelector', () => {
       <ProviderSelector value="nagoya_city_bus" onChange={handleChange} />
     )
 
-    fireEvent.click(screen.getByText('横浜市バス'))
+    fireEvent.click(screen.getByText('横浜市営バス'))
 
     expect(handleChange).toHaveBeenCalledWith('yokohama_city_bus')
   })

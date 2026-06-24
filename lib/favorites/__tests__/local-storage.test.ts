@@ -19,7 +19,7 @@ describe('addFavorite', () => {
   })
 
   it('横浜エリアの areaId が保存されること', () => {
-    const result = addFavorite('横浜駅', '元町', 'yokohama', '横浜市バス・相鉄バス')
+    const result = addFavorite('横浜駅', '元町', 'yokohama', '横浜市営バス・相鉄バス')
     expect(result.areaId).toBe('yokohama')
     const stored = getFavorites()
     expect(stored[0].areaId).toBe('yokohama')
@@ -27,7 +27,7 @@ describe('addFavorite', () => {
 
   it('異なる areaId で同じ停留所名が別エントリとして保存されること', () => {
     addFavorite('栄', '名古屋駅', 'nagoya', '名古屋市バス')
-    addFavorite('横浜駅', '元町', 'yokohama', '横浜市バス・相鉄バス')
+    addFavorite('横浜駅', '元町', 'yokohama', '横浜市営バス・相鉄バス')
     const stored = getFavorites()
     expect(stored).toHaveLength(2)
     expect(stored.map(f => f.areaId)).toContain('nagoya')
