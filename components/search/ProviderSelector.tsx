@@ -25,7 +25,8 @@ export function ProviderSelector({ value, onChange }: ProviderSelectorProps) {
       value={value}
       onChange={onChange}
       fullWidth
-      size="sm"
+      size="md"
+      color="blue"
     />
   )
 }

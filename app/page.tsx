@@ -18,13 +18,13 @@ import {
   Loader,
   Input,
   Popover,
+  Badge,
   rem,
 } from '@mantine/core'
 import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
-import { PROVIDER_CONFIGS } from '@/lib/providers/providers'
 import { ProviderSelector } from '@/components/search/ProviderSelector'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
@@ -437,14 +437,14 @@ function SearchPageContent() {
   return (
     <Container size="sm" py="md" px="md">
       <Stack gap="md">
-        <Stack gap={4}>
+        <Group gap={8} align="center" wrap="nowrap">
           <Title order={1} size="h3" fw={800}>
             市バスかんたん検索
           </Title>
-          <Text c="dimmed" size="sm">
-            {PROVIDER_CONFIGS.find((p) => p.id === provider)?.displayName ?? '市バス'} 直通ルート検索
-          </Text>
-        </Stack>
+          <Badge variant="light" color="blue" size="sm" radius="sm">
+            直通ルート検索
+          </Badge>
+        </Group>
 
         <ProviderSelector value={provider} onChange={handleProviderChange} />
 
@@ -559,7 +559,7 @@ function SearchPageContent() {
 
               {/* ダイヤ区分 */}
               <Stack gap="xs">
-                <Text size="sm" fw={600} c="gray.7">
+                <Text size="sm" fw={600} c="gray.7" visibleFrom="sm">
                   ダイヤ区分
                 </Text>
                 <SegmentedControl
@@ -580,9 +580,6 @@ function SearchPageContent() {
 
               {/* 時刻選択 */}
               <Stack gap="xs">
-                <Text size="sm" fw={600} c="gray.7">
-                  時刻
-                </Text>
                 <SegmentedControl
                   value={timeMode}
                   onChange={(v) => setTimeMode(v as TimeMode)}
