@@ -46,3 +46,7 @@ next-env.d.ts
 
 # AI review reports (local only)
 .review-reports/
+
+# Playwright
+playwright-report/
+test-results/
