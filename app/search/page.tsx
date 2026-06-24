@@ -203,7 +203,7 @@ function SearchResultContent() {
             size="sm"
             radius="md"
             leftSection={<IconClock size={rem(16)} stroke={1.5} />}
-            onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}`)}
+            onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(provider)}`)}
             style={{ alignSelf: 'flex-start' }}
           >
             {from}の時刻表を見る

@@ -14,6 +14,7 @@ const DAY_TYPE_OPTIONS = [
 
 interface TimetableControllerProps {
   stopName: string
+  provider: string
 }
 
 type FetchState = {
@@ -55,7 +56,7 @@ function getNowJST(): { hour: number; minute: number } {
   return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
 }
 
-export function TimetableController({ stopName }: TimetableControllerProps) {
+export function TimetableController({ stopName, provider }: TimetableControllerProps) {
   const [dayType, setDayType] = useState<DayType>('weekday')
   const [currentTime] = useState(getNowJST)
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
@@ -66,7 +67,7 @@ export function TimetableController({ stopName }: TimetableControllerProps) {
   useEffect(() => {
     dispatch({ type: 'FETCH_START' })
 
-    const params = new URLSearchParams({ stopName, dayType })
+    const params = new URLSearchParams({ stopName, dayType, provider })
     fetch(`/api/timetable?${params}`)
       .then((r) => r.json())
       .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
@@ -79,7 +80,7 @@ export function TimetableController({ stopName }: TimetableControllerProps) {
           message: e instanceof Error ? e.message : 'エラーが発生しました',
         }),
       )
-  }, [stopName, dayType])
+  }, [stopName, dayType, provider])
 
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
   const directionOptions = directions.map((d, i) => ({ label: d.headsign, value: String(i) }))
