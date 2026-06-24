@@ -286,11 +286,23 @@ function SearchResultContent() {
           </Stack>
         )}
 
-        {/* 通常検索 — 結果なし */}
-        {!loading && !error && !isNearbyMode && filtered.length === 0 && (
+        {/* 通常検索 — 結果なし（経路自体が存在しない） */}
+        {!loading && !error && !isNearbyMode && results.length === 0 && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
-            title="バスが見つかりませんでした"
+            title="直通バスが見つかりませんでした"
+            color="red"
+            radius="md"
+          >
+            {from} から {to} への直通バスはありません。バス停名を確認するか、別の停留所名をお試しください。
+          </Alert>
+        )}
+
+        {/* 通常検索 — 結果なし（時間帯に便がない） */}
+        {!loading && !error && !isNearbyMode && results.length > 0 && filtered.length === 0 && (
+          <Alert
+            icon={<IconAlertCircle size={rem(16)} />}
+            title="この時間帯に運行するバスはありません"
             color="orange"
             radius="md"
           >
