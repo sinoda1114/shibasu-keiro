@@ -302,13 +302,19 @@ function SearchResultContent() {
         {!loading && !error && !isNearbyMode && results.length > 0 && filtered.length === 0 && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
-            title="この時間帯に運行するバスはありません"
-            color="orange"
+            title={
+              !isArriveMode && lastBus
+                ? '本日の運行は終了しました'
+                : 'この時間帯に運行するバスはありません'
+            }
+            color={!isArriveMode && lastBus ? 'gray' : 'orange'}
             radius="md"
           >
             {isArriveMode
               ? '指定時刻までに到着できるバスはありません。ダイヤ区分や時刻を変えてお試しください。'
-              : 'この時間帯に運行するバスはありません。ダイヤ区分や時刻を変えてお試しください。'}
+              : lastBus
+                ? `この路線の最終便（${lastBus.departureTime} 発）はすでに終了しています。`
+                : 'この時間帯に運行するバスはありません。ダイヤ区分や時刻を変えてお試しください。'}
           </Alert>
         )}
 
