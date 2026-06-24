@@ -18,7 +18,8 @@
     "db:push": "drizzle-kit push",
     "gtfs:import": "npx tsx --env-file=.env.local scripts/gtfs/index.ts",
     "gtfs:check": "npx tsx --env-file=.env.local scripts/check-db.ts",
-    "db:reset": "npx tsx --env-file=.env.local scripts/reset-db.ts"
+    "db:reset": "npx tsx --env-file=.env.local scripts/reset-db.ts",
+    "odpt:import:sotetsu": "npx tsx --env-file=.env.local scripts/odpt/index.ts"
   },
   "dependencies": {
     "@libsql/client": "0.15.4",
