@@ -9,6 +9,7 @@ import {
   secondsToHHMM,
   todayYYYYMMDD,
 } from '@/lib/gtfs/service-resolver'
+import { getAreaConfig } from '@/lib/providers/providers'
 
 export interface DirectRouteResult {
   tripId: string
@@ -20,41 +21,21 @@ export interface DirectRouteResult {
   arrivalTime: string
   departureSeconds: number
   arrivalSeconds: number
+  providerId: string
+  providerDisplayName: string
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl
-  const fromName = searchParams.get('from')?.trim()
-  const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
-  const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
-
-  if (!fromName || !toName) {
-    return NextResponse.json(
-      { success: false, error: 'from と to は必須です' },
-      { status: 400 }
-    )
-  }
-
-  if (!/^\d{8}$/.test(dateStr)) {
-    return NextResponse.json(
-      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
-      { status: 400 }
-    )
-  }
-
+async function queryOneProvider(
+  providerId: string,
+  fromName: string,
+  toName: string,
+  dateStr: string
+): Promise<DirectRouteResult[]> {
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) {
-    return NextResponse.json(
-      { success: false, error: 'データが利用できません。インポートをお待ちください。' },
-      { status: 503 }
-    )
-  }
+  if (!versionId) return []
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
-  if (serviceIds.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (serviceIds.length === 0) return []
 
   const [fromStops, toStops] = await Promise.all([
     db
@@ -75,14 +56,11 @@ export async function GET(req: NextRequest) {
       )),
   ])
 
-  if (fromStops.length === 0 || toStops.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (fromStops.length === 0 || toStops.length === 0) return []
 
   const fromIds = fromStops.map((s) => s.stopId)
   const toIds = toStops.map((s) => s.stopId)
 
-  // 自己結合: 同一 trip で from → to (stopSequence: from < to)
   const fromSt = alias(busStopTimes, 'from_st')
   const toSt = alias(busStopTimes, 'to_st')
   const tripsAlias = alias(busTrips, 't')
@@ -137,7 +115,13 @@ export async function GET(req: NextRequest) {
     .orderBy(fromSt.departureTimeSeconds)
     .limit(500)
 
-  const data: DirectRouteResult[] = rows.map((r) => ({
+  const providerDisplayName =
+    providerId === 'nagoya_city_bus' ? '名古屋市バス'
+    : providerId === 'yokohama_city_bus' ? '横浜市バス'
+    : providerId === 'sotetsu_bus' ? '相鉄バス'
+    : providerId
+
+  return rows.map((r) => ({
     tripId: r.tripId,
     routeId: r.routeShortName ?? r.routeId,
     headsign: r.headsign,
@@ -147,7 +131,40 @@ export async function GET(req: NextRequest) {
     arrivalTime: secondsToHHMM(r.arrSec!),
     departureSeconds: r.depSec!,
     arrivalSeconds: r.arrSec!,
+    providerId,
+    providerDisplayName,
   }))
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl
+  const fromName = searchParams.get('from')?.trim()
+  const toName = searchParams.get('to')?.trim()
+  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
+  const areaId = searchParams.get('area') ?? 'nagoya'
+
+  if (!fromName || !toName) {
+    return NextResponse.json(
+      { success: false, error: 'from と to は必須です' },
+      { status: 400 }
+    )
+  }
+
+  if (!/^\d{8}$/.test(dateStr)) {
+    return NextResponse.json(
+      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
+      { status: 400 }
+    )
+  }
+
+  const area = getAreaConfig(areaId)
+  const results = await Promise.all(
+    area.providerIds.map((pid) => queryOneProvider(pid, fromName, toName, dateStr))
+  )
+
+  const data = results
+    .flat()
+    .sort((a, b) => a.departureSeconds - b.departureSeconds)
 
   return NextResponse.json({ success: true, data, date: dateStr }, {
     headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },

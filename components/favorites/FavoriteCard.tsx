@@ -4,6 +4,7 @@ import {
   Card,
   Group,
   Text,
+  Badge,
   ActionIcon,
   rem,
 } from '@mantine/core'
@@ -52,6 +53,11 @@ export function FavoriteCard({
           <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
             {route.toStopName}
           </Text>
+          {route.providerDisplayName && (
+            <Badge size="xs" variant="outline" color="gray" radius="sm" style={{ flexShrink: 0 }}>
+              {route.providerDisplayName}
+            </Badge>
+          )}
         </Group>
 
         {/* アクションボタン */}

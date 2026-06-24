@@ -65,6 +65,8 @@ export function NearbyResultGroup({
               fromStopName={stopName}
               toStopName={toStopName}
               date={date}
+              provider={nextBus.providerId}
+              providerDisplayName={nextBus.providerDisplayName}
             />
           )}
           {rest.map((bus) => (
@@ -80,6 +82,8 @@ export function NearbyResultGroup({
               fromStopName={stopName}
               toStopName={toStopName}
               date={date}
+              provider={bus.providerId}
+              providerDisplayName={bus.providerDisplayName}
             />
           ))}
         </Stack>

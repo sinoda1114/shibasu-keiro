@@ -1,12 +1,13 @@
 export interface FavoriteRoute {
   id: string
-  providerId: string
+  areaId: string
+  providerDisplayName: string
   fromStopName: string
   toStopName: string
   createdAt: string
 }
 
-const STORAGE_KEY = 'shibasu_keiro_favorites'
+const STORAGE_KEY = 'shibasu_keiro_favorites_v2'
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -25,11 +26,17 @@ export function getFavorites(): FavoriteRoute[] {
   }
 }
 
-export function addFavorite(from: string, to: string, providerId: string): FavoriteRoute {
+export function addFavorite(
+  from: string,
+  to: string,
+  areaId: string,
+  providerDisplayName: string
+): FavoriteRoute {
   const favorites = getFavorites()
   const newItem: FavoriteRoute = {
     id: generateId(),
-    providerId,
+    areaId,
+    providerDisplayName,
     fromStopName: from,
     toStopName: to,
     createdAt: new Date().toISOString(),

@@ -36,6 +36,7 @@ export function FavoritesList() {
       const params = new URLSearchParams({
         from: route.fromStopName,
         to: route.toStopName,
+        area: route.areaId,
       })
       router.push(`/?${params.toString()}`)
     },

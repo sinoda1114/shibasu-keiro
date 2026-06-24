@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq, like, sql } from 'drizzle-orm'
+import { and, eq, like, sql, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { busStops, gtfsVersions } from '@/lib/db/schema'
+import { getAreaConfig } from '@/lib/providers/providers'
 
 export interface StopSearchResult {
   stopName: string
@@ -12,13 +13,17 @@ export interface StopSearchResult {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q')?.trim()
-  const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
+  const areaId = searchParams.get('area') ?? searchParams.get('provider') ?? 'nagoya'
 
   if (!q || q.length < 1) {
     return NextResponse.json({ success: true, data: [] })
   }
 
-  // active バージョンの bus_stops からプレフィックス検索（同名停留所を名前でまとめる）
+  const area = getAreaConfig(areaId)
+  // getAreaConfig は未知IDをデフォルト（名古屋）にフォールバックするため、
+  // area.providerIds は常に非空。
+  const providerIds = area.providerIds
+
   const rows = await db
     .select({ stopName: busStops.stopName })
     .from(busStops)
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
     ))
     .where(
       and(
-        eq(busStops.providerId, providerId),
+        inArray(busStops.providerId, providerIds),
         like(busStops.stopName, `%${q}%`)
       )
     )

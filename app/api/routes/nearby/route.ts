@@ -9,6 +9,7 @@ import {
   secondsToHHMM,
   todayYYYYMMDD,
 } from '@/lib/gtfs/service-resolver'
+import { getAreaConfig } from '@/lib/providers/providers'
 
 export interface NearbyTrip {
   tripId: string
@@ -18,6 +19,8 @@ export interface NearbyTrip {
   arrivalTime: string
   departureSeconds: number
   arrivalSeconds: number
+  providerId: string
+  providerDisplayName: string
 }
 
 export interface NearbyStop {
@@ -48,51 +51,19 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl
-  const latStr = searchParams.get('lat')
-  const lonStr = searchParams.get('lon')
-  const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
-  const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
-
-  if (!latStr || !lonStr || !toName) {
-    return NextResponse.json(
-      { success: false, error: 'lat・lon・to は必須です' },
-      { status: 400 }
-    )
-  }
-
-  const lat = parseFloat(latStr)
-  const lon = parseFloat(lonStr)
-  if (isNaN(lat) || isNaN(lon)) {
-    return NextResponse.json(
-      { success: false, error: 'lat・lon は数値で指定してください' },
-      { status: 400 }
-    )
-  }
-
-  if (!/^\d{8}$/.test(dateStr)) {
-    return NextResponse.json(
-      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
-      { status: 400 }
-    )
-  }
-
+async function queryOneProvider(
+  providerId: string,
+  lat: number,
+  lon: number,
+  toName: string,
+  dateStr: string
+): Promise<NearbyStop[]> {
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) {
-    return NextResponse.json(
-      { success: false, error: 'データが利用できません。インポートをお待ちください。' },
-      { status: 503 }
-    )
-  }
+  if (!versionId) return []
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
-  if (serviceIds.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (serviceIds.length === 0) return []
 
-  // 1. バウンディングボックスで近隣バス停を取得（stop_name ごとにまとめる）
   const nearbyRaw = await db
     .selectDistinct({
       stopId: busStops.stopId,
@@ -112,11 +83,8 @@ export async function GET(req: NextRequest) {
       )
     )
 
-  if (nearbyRaw.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (nearbyRaw.length === 0) return []
 
-  // 2. 正確な距離で 500m 以内に絞り込み、距離でソート
   const nearbyStops = nearbyRaw
     .map((s) => ({
       ...s,
@@ -125,11 +93,8 @@ export async function GET(req: NextRequest) {
     .filter((s) => s.distanceM <= 500)
     .sort((a, b) => a.distanceM - b.distanceM)
 
-  if (nearbyStops.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (nearbyStops.length === 0) return []
 
-  // 3. 目的地の stopId を取得
   const toStops = await db
     .select({ stopId: busStops.stopId })
     .from(busStops)
@@ -141,13 +106,9 @@ export async function GET(req: NextRequest) {
       )
     )
 
-  if (toStops.length === 0) {
-    return NextResponse.json({ success: true, data: [], date: dateStr })
-  }
+  if (toStops.length === 0) return []
   const toIds = toStops.map((s) => s.stopId)
 
-  // 4. 近隣バス停ごとに直通便を検索（stop_name でまとめた stopId 群を使用）
-  // 同名停留所（複数 stopId）をまとめて処理する
   const stopNameToIds = new Map<string, string[]>()
   for (const s of nearbyStops) {
     const ids = stopNameToIds.get(s.stopName) ?? []
@@ -211,7 +172,12 @@ export async function GET(req: NextRequest) {
     )
     .orderBy(fromSt.departureTimeSeconds)
 
-  // 5. stopId → stopName のマップを作り、結果をバス停ごとにグループ化
+  const providerDisplayName =
+    providerId === 'nagoya_city_bus' ? '名古屋市バス'
+    : providerId === 'yokohama_city_bus' ? '横浜市バス'
+    : providerId === 'sotetsu_bus' ? '相鉄バス'
+    : providerId
+
   const stopIdToName = new Map(nearbyStops.map((s) => [s.stopId, s.stopName]))
   const tripsByStopName = new Map<string, NearbyTrip[]>()
 
@@ -227,24 +193,83 @@ export async function GET(req: NextRequest) {
       arrivalTime: secondsToHHMM(r.arrSec!),
       departureSeconds: r.depSec!,
       arrivalSeconds: r.arrSec!,
+      providerId,
+      providerDisplayName,
     })
     tripsByStopName.set(stopName, trips)
   }
 
-  // 6. 距離順でまとめ、直通便がある停留所のみ返す
   const seen = new Set<string>()
-  const data: NearbyStop[] = []
+  const result: NearbyStop[] = []
   for (const s of nearbyStops) {
     if (seen.has(s.stopName)) continue
     seen.add(s.stopName)
     const trips = tripsByStopName.get(s.stopName)
     if (!trips || trips.length === 0) continue
-    data.push({
+    result.push({
       stopName: s.stopName,
       distanceM: Math.round(s.distanceM),
       trips,
     })
   }
+
+  return result
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl
+  const latStr = searchParams.get('lat')
+  const lonStr = searchParams.get('lon')
+  const toName = searchParams.get('to')?.trim()
+  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
+  const areaId = searchParams.get('area') ?? 'nagoya'
+
+  if (!latStr || !lonStr || !toName) {
+    return NextResponse.json(
+      { success: false, error: 'lat・lon・to は必須です' },
+      { status: 400 }
+    )
+  }
+
+  const lat = parseFloat(latStr)
+  const lon = parseFloat(lonStr)
+  if (isNaN(lat) || isNaN(lon)) {
+    return NextResponse.json(
+      { success: false, error: 'lat・lon は数値で指定してください' },
+      { status: 400 }
+    )
+  }
+
+  if (!/^\d{8}$/.test(dateStr)) {
+    return NextResponse.json(
+      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
+      { status: 400 }
+    )
+  }
+
+  const area = getAreaConfig(areaId)
+  const results = await Promise.all(
+    area.providerIds.map((pid) => queryOneProvider(pid, lat, lon, toName, dateStr))
+  )
+
+  // 全プロバイダーの NearbyStop をマージ: 同stopName は distanceM が小さい方を代表に
+  const merged = new Map<string, NearbyStop>()
+  for (const stops of results) {
+    for (const stop of stops) {
+      const existing = merged.get(stop.stopName)
+      if (!existing) {
+        merged.set(stop.stopName, { ...stop })
+      } else {
+        if (stop.distanceM < existing.distanceM) {
+          existing.distanceM = stop.distanceM
+        }
+        existing.trips = [...existing.trips, ...stop.trips]
+        existing.trips.sort((a, b) => a.departureSeconds - b.departureSeconds)
+      }
+    }
+  }
+
+  const data = Array.from(merged.values()).sort((a, b) => a.distanceM - b.distanceM)
 
   return NextResponse.json({ success: true, data, date: dateStr })
 }

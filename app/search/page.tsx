@@ -18,6 +18,7 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
+import { getAreaConfig } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
@@ -33,6 +34,8 @@ interface DirectRouteResult {
   arrivalTime: string
   departureSeconds: number
   arrivalSeconds: number
+  providerId: string
+  providerDisplayName: string
 }
 
 const DAY_TYPE_LABELS: Record<string, string> = {
@@ -98,7 +101,9 @@ function SearchResultContent() {
   const dayType = searchParams.get('dayType') ?? 'weekday'
   const time = searchParams.get('time') ?? ''
   const timeMode = searchParams.get('timeMode') ?? 'now'
-  const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
+  const area = searchParams.get('area') ?? 'nagoya'
+  const areaConfig = getAreaConfig(area)
+  const firstProviderId = areaConfig.providerIds[0]
 
   const [results, setResults] = useState<DirectRouteResult[]>([])
   const [nearbyResults, setNearbyResults] = useState<NearbyStop[]>([])
@@ -106,7 +111,7 @@ function SearchResultContent() {
   const [error, setError] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(() => {
     if (typeof window === 'undefined') return false
-    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.providerId === provider)
+    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
   })
 
   useEffect(() => {
@@ -115,7 +120,7 @@ function SearchResultContent() {
 
     if (isNearbyMode && to) {
       fetch(
-        `/api/routes/nearby?lat=${lat}&lon=${lon}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
+        `/api/routes/nearby?lat=${lat}&lon=${lon}&to=${encodeURIComponent(to)}&date=${date}&area=${encodeURIComponent(area)}`,
         { signal: controller.signal }
       )
         .then((r) => r.json())
@@ -129,7 +134,7 @@ function SearchResultContent() {
         .finally(() => setLoading(false))
     } else if (from && to) {
       fetch(
-        `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&provider=${encodeURIComponent(provider)}`,
+        `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&area=${encodeURIComponent(area)}`,
         { signal: controller.signal }
       )
         .then((r) => r.json())
@@ -144,7 +149,7 @@ function SearchResultContent() {
     }
 
     return () => controller.abort()
-  }, [from, to, lat, lon, isNearbyMode, dayType, provider])
+  }, [from, to, lat, lon, isNearbyMode, dayType, area])
 
   const date = getDayTypeDate(dayType)
   const nowSec = (() => {
@@ -177,27 +182,29 @@ function SearchResultContent() {
                 {isNearbyMode ? `現在地 → ${to}` : `${from} → ${to}`}
               </Title>
             </Group>
-            <Button
-              variant={isFavorited ? 'filled' : 'outline'}
-              color="yellow"
-              size="sm"
-              radius="md"
-              leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
-              aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
-              onClick={() => {
-                if (isFavorited) {
-                  const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.providerId === provider)
-                  if (target) removeFavorite(target.id)
-                  setIsFavorited(false)
-                } else {
-                  addFavorite(from, to, provider)
-                  setIsFavorited(true)
-                }
-              }}
-              style={{ flexShrink: 0 }}
-            >
-              {isFavorited ? 'お気に入り済み' : 'お気に入りに追加'}
-            </Button>
+            {!isNearbyMode && (
+              <Button
+                variant={isFavorited ? 'filled' : 'outline'}
+                color="yellow"
+                size="sm"
+                radius="md"
+                leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
+                aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
+                onClick={() => {
+                  if (isFavorited) {
+                    const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
+                    if (target) removeFavorite(target.id)
+                    setIsFavorited(false)
+                  } else {
+                    addFavorite(from, to, area, areaConfig.providerDisplayNames.join('・'))
+                    setIsFavorited(true)
+                  }
+                }}
+                style={{ flexShrink: 0 }}
+              >
+                {isFavorited ? 'お気に入り済み' : 'お気に入りに追加'}
+              </Button>
+            )}
           </Group>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
@@ -216,7 +223,7 @@ function SearchResultContent() {
               size="sm"
               radius="md"
               leftSection={<IconClock size={rem(16)} stroke={1.5} />}
-              onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(provider)}`)}
+              onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(firstProviderId)}`)}
               style={{ alignSelf: 'flex-start' }}
             >
               {from}の時刻表を見る
@@ -281,7 +288,7 @@ function SearchResultContent() {
             color="red"
             radius="md"
           >
-            {from} から {to} への直通バスはありません。バス停名を確認するか、別の停留所名をお試しください。
+            {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
           </Alert>
         )}
 
@@ -323,7 +330,8 @@ function SearchResultContent() {
               fromStopName={from}
               toStopName={to}
               date={date}
-              provider={provider}
+              provider={nextBus.providerId}
+              providerDisplayName={nextBus.providerDisplayName}
             />
           </Stack>
         )}
@@ -348,7 +356,8 @@ function SearchResultContent() {
                   fromStopName={from}
                   toStopName={to}
                   date={date}
-                  provider={provider}
+                  provider={bus.providerId}
+                  providerDisplayName={bus.providerDisplayName}
                 />
               ))}
             </Stack>
@@ -371,7 +380,8 @@ function SearchResultContent() {
               fromStopName={from}
               toStopName={to}
               date={date}
-              provider={provider}
+              provider={lastBus.providerId}
+              providerDisplayName={lastBus.providerDisplayName}
             />
           </>
         )}
