@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '../../lib/db/client'
 import { gtfsVersions } from '../../lib/db/schema'
+import { isOdptFilesUrl, resolveOdptUrl } from './utils'
 
 export interface UpdateCheckResult {
   hasUpdate: boolean
@@ -8,44 +9,6 @@ export interface UpdateCheckResult {
   lastModified: string | null
   sourceHash: string
   resolvedUrl?: string
-}
-
-/**
- * ODPT Files API の URL かどうかを判定する
- */
-export function isOdptFilesUrl(url: string): boolean {
-  return url.includes('api.odpt.org/api/v4/files/')
-}
-
-/**
- * ODPT Files URL に date パラメーターを付けてリクエストし、
- * 302 リダイレクト先の Azure Blob URL を返す（最大6ヶ月遡る）
- *
- * ODPT の仕様:
- * - HEAD リクエストは 404 を返す（GET のみ 302 が返る）
- * - date パラメーターは毎月変わる（例: 20260601 → 20260701）
- * - リダイレクト先は SAS URL（有効期限あり）
- */
-export async function resolveOdptUrl(
-  rawUrl: string
-): Promise<{ blobUrl: string; date: string } | null> {
-  const parsed = new URL(rawUrl)
-  const token = parsed.searchParams.get('acl:consumerKey') ?? ''
-  const baseUrl = `${parsed.origin}${parsed.pathname}`
-
-  const now = new Date()
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}01`
-    const tryUrl = `${baseUrl}?date=${date}&acl:consumerKey=${token}`
-
-    const r = await fetch(tryUrl, { redirect: 'manual' })
-    if (r.status === 302) {
-      const location = r.headers.get('location')
-      if (location) return { blobUrl: location, date }
-    }
-  }
-  return null
 }
 
 /**
@@ -62,7 +25,6 @@ export async function checkUpdate(url: string, providerId: string): Promise<Upda
   let resolvedUrl: string | undefined
 
   if (isOdptFilesUrl(url)) {
-    // ODPT URL: 最新 date を探して Azure Blob URL を取得
     const resolved = await resolveOdptUrl(url)
     if (!resolved) {
       throw new Error('ODPT: 利用可能なGTFSデータが見つかりませんでした（過去6ヶ月を確認）')
@@ -79,7 +41,6 @@ export async function checkUpdate(url: string, providerId: string): Promise<Upda
   const etag = res.headers.get('etag')
   const lastModified = res.headers.get('last-modified')
 
-  // sourceHash に date を含める（月次更新を検出するため）
   const newHash =
     datePrefix +
     (etag ? `etag:${etag}` : lastModified ? `lm:${lastModified}` : `ts:${Date.now()}`)
