@@ -22,8 +22,14 @@ import {
   type GtfsCalendarDate,
 } from './parse'
 
-const PROVIDER_ID = 'nagoya_city_bus'
 const BATCH_SIZE = 500
+
+export interface GtfsProviderConfig {
+  providerId: string
+  displayName: string
+  areaName: string
+  sourceUrl: string
+}
 
 /**
  * バッチINSERTヘルパー
@@ -68,37 +74,38 @@ async function batchInsert<T extends object>(
 export async function importGtfs(
   gtfsDir: string,
   versionName: string,
+  config: GtfsProviderConfig,
   sourceHash?: string
 ): Promise<string> {
+  const { providerId, displayName, areaName, sourceUrl } = config
   const versionId = generateId()
   const jobId = generateId()
   const now = new Date().toISOString()
-  const sourceUrl = process.env.NAGOYA_GTFS_URL ?? ''
 
-  // providers テーブルに nagoya_city_bus が存在しなければ挿入
+  // providers テーブルにプロバイダーが存在しなければ挿入
   const existing = await db
     .select()
     .from(providers)
-    .where(eq(providers.id, PROVIDER_ID))
+    .where(eq(providers.id, providerId))
     .limit(1)
   if (existing.length === 0) {
     await db.insert(providers).values({
-      id: PROVIDER_ID,
-      name: PROVIDER_ID,
-      displayName: '名古屋市バス',
-      areaName: '名古屋市',
+      id: providerId,
+      name: providerId,
+      displayName,
+      areaName,
       gtfsSourceUrl: sourceUrl,
       isActive: 1,
       createdAt: now,
       updatedAt: now,
     })
-    console.log('Inserted provider: nagoya_city_bus')
+    console.log(`Inserted provider: ${providerId}`)
   }
 
   // ジョブ開始
   await db.insert(gtfsImportJobs).values({
     id: jobId,
-    providerId: PROVIDER_ID,
+    providerId,
     gtfsVersionId: versionId,
     status: 'running',
     startedAt: now,
@@ -110,7 +117,7 @@ export async function importGtfs(
     // バージョン登録（status は staging のまま）
     await db.insert(gtfsVersions).values({
       id: versionId,
-      providerId: PROVIDER_ID,
+      providerId,
       versionName,
       sourceUrl,
       sourceHash: sourceHash ?? null,
@@ -125,7 +132,7 @@ export async function importGtfs(
       busStops,
       stops.map((s) => ({
         id: generateId(),
-        providerId: PROVIDER_ID,
+        providerId,
         gtfsVersionId: versionId,
         stopId: s.stop_id,
         stopName: s.stop_name,
@@ -143,7 +150,7 @@ export async function importGtfs(
       busRoutes,
       routes.map((r) => ({
         id: generateId(),
-        providerId: PROVIDER_ID,
+        providerId,
         gtfsVersionId: versionId,
         routeId: r.route_id,
         routeShortName: r.route_short_name || null,
@@ -160,7 +167,7 @@ export async function importGtfs(
       busTrips,
       trips.map((t) => ({
         id: generateId(),
-        providerId: PROVIDER_ID,
+        providerId,
         gtfsVersionId: versionId,
         tripId: t.trip_id,
         routeId: t.route_id,
@@ -179,7 +186,7 @@ export async function importGtfs(
       busStopTimes,
       stopTimes.map((st) => ({
         id: generateId(),
-        providerId: PROVIDER_ID,
+        providerId,
         gtfsVersionId: versionId,
         tripId: st.trip_id,
         stopId: st.stop_id,
@@ -200,7 +207,7 @@ export async function importGtfs(
         gtfsCalendar,
         calendars.map((c) => ({
           id: generateId(),
-          providerId: PROVIDER_ID,
+          providerId,
           gtfsVersionId: versionId,
           serviceId: c.service_id,
           monday: parseInt(c.monday),
@@ -225,7 +232,7 @@ export async function importGtfs(
         gtfsCalendarDates,
         calendarDates.map((cd) => ({
           id: generateId(),
-          providerId: PROVIDER_ID,
+          providerId,
           gtfsVersionId: versionId,
           serviceId: cd.service_id,
           date: cd.date,

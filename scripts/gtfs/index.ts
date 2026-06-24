@@ -2,21 +2,45 @@ import { join } from 'node:path'
 import { rmSync } from 'node:fs'
 import { checkUpdate } from './check-update'
 import { downloadAndExtract } from './download'
-import { importGtfs } from './import'
+import { importGtfs, type GtfsProviderConfig } from './import'
 import { validateImport } from './validate'
 import { activateVersion } from './activate'
 import { cleanupOldVersions } from './cleanup'
 
-const PROVIDER_ID = 'nagoya_city_bus'
+const PROVIDER_CONFIGS: Record<string, { gtfsUrlEnv: string; displayName: string; areaName: string }> = {
+  nagoya_city_bus: {
+    gtfsUrlEnv: 'NAGOYA_GTFS_URL',
+    displayName: '名古屋市バス',
+    areaName: '名古屋市',
+  },
+  yokohama_city_bus: {
+    gtfsUrlEnv: 'YOKOHAMA_GTFS_URL',
+    displayName: '横浜市バス',
+    areaName: '横浜市',
+  },
+}
 
 async function main(): Promise<void> {
-  const gtfsUrl = process.env.NAGOYA_GTFS_URL
-  if (!gtfsUrl) throw new Error('NAGOYA_GTFS_URL is not set')
+  const providerId = process.env.GTFS_PROVIDER ?? 'nagoya_city_bus'
+  const providerMeta = PROVIDER_CONFIGS[providerId]
+  if (!providerMeta) {
+    throw new Error(`Unknown GTFS_PROVIDER: ${providerId}. Available: ${Object.keys(PROVIDER_CONFIGS).join(', ')}`)
+  }
+
+  const gtfsUrl = process.env[providerMeta.gtfsUrlEnv]
+  if (!gtfsUrl) throw new Error(`${providerMeta.gtfsUrlEnv} is not set`)
   if (!process.env.TURSO_DATABASE_URL) throw new Error('TURSO_DATABASE_URL is not set')
 
+  const config: GtfsProviderConfig = {
+    providerId,
+    displayName: providerMeta.displayName,
+    areaName: providerMeta.areaName,
+    sourceUrl: gtfsUrl,
+  }
+
   // 1. 更新チェック（ETag / Last-Modified）
-  console.log('Checking for GTFS updates...')
-  const update = await checkUpdate(gtfsUrl, PROVIDER_ID)
+  console.log(`Checking for GTFS updates (${providerId})...`)
+  const update = await checkUpdate(gtfsUrl, providerId)
 
   if (!update.hasUpdate) {
     console.log('No update detected. Skipping import.')
@@ -33,7 +57,7 @@ async function main(): Promise<void> {
     await downloadAndExtract(gtfsUrl, tmpDir)
 
     // 3. staging として取込
-    const versionId = await importGtfs(tmpDir, versionName, update.sourceHash)
+    const versionId = await importGtfs(tmpDir, versionName, config, update.sourceHash)
 
     // 4. 検証
     const valid = await validateImport(versionId)
@@ -42,10 +66,10 @@ async function main(): Promise<void> {
     }
 
     // 5. staging → active 昇格（旧 active は自動 archived）
-    await activateVersion(versionId, PROVIDER_ID)
+    await activateVersion(versionId, providerId)
 
     // 6. 古いバージョンのクリーンアップ
-    await cleanupOldVersions(PROVIDER_ID)
+    await cleanupOldVersions(providerId)
 
     console.log('\n🎉 GTFS update completed successfully!')
   } finally {
