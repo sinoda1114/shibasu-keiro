@@ -136,6 +136,18 @@ async function queryOneProvider(
   }))
 }
 
+async function checkSotetsuStopsExist(fromName: string, toName: string): Promise<boolean> {
+  const versionId = await getActiveVersionId('sotetsu_bus')
+  if (!versionId) return false
+  const [fromStops, toStops] = await Promise.all([
+    db.select({ stopId: busStops.stopId }).from(busStops)
+      .where(and(eq(busStops.providerId, 'sotetsu_bus'), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, fromName))),
+    db.select({ stopId: busStops.stopId }).from(busStops)
+      .where(and(eq(busStops.providerId, 'sotetsu_bus'), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, toName))),
+  ])
+  return fromStops.length > 0 && toStops.length > 0
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const fromName = searchParams.get('from')?.trim()
@@ -166,7 +178,12 @@ export async function GET(req: NextRequest) {
     .flat()
     .sort((a, b) => a.departureSeconds - b.departureSeconds)
 
-  return NextResponse.json({ success: true, data, date: dateStr }, {
+  const hasSotetsu = area.providerIds.includes('sotetsu_bus')
+  const sotetsuStopsExist = hasSotetsu && data.length === 0
+    ? await checkSotetsuStopsExist(fromName, toName)
+    : false
+
+  return NextResponse.json({ success: true, data, date: dateStr, sotetsuStopsExist }, {
     headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
   })
 }
