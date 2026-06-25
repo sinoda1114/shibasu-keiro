@@ -16,7 +16,7 @@ import {
   Center,
   rem,
 } from '@mantine/core'
-import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin } from '@tabler/icons-react'
+import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin, IconExternalLink } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
@@ -109,6 +109,7 @@ function SearchResultContent() {
   const [nearbyResults, setNearbyResults] = useState<NearbyStop[]>([])
   const [loading, setLoading] = useState(!!(isNearbyMode ? (lat && lon && to) : (from && to)))
   const [error, setError] = useState<string | null>(null)
+  const [sotetsuStopsExist, setSotetsuStopsExist] = useState(false)
   const [isFavorited, setIsFavorited] = useState(() => {
     if (typeof window === 'undefined') return false
     return getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
@@ -138,9 +139,13 @@ function SearchResultContent() {
         { signal: controller.signal }
       )
         .then((r) => r.json())
-        .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string }) => {
-          if (json.success) setResults(json.data ?? [])
-          else setError(json.error ?? '検索に失敗しました')
+        .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string; sotetsuStopsExist?: boolean }) => {
+          if (json.success) {
+            setResults(json.data ?? [])
+            setSotetsuStopsExist(json.sotetsuStopsExist ?? false)
+          } else {
+            setError(json.error ?? '検索に失敗しました')
+          }
         })
         .catch((err: unknown) => {
           if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
@@ -294,7 +299,30 @@ function SearchResultContent() {
             color="red"
             radius="md"
           >
-            {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
+            <Stack gap="xs">
+              <Text size="sm">
+                {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
+              </Text>
+              {sotetsuStopsExist && (
+                <Text size="sm">
+                  相鉄バスのバス停は存在しますが、直通便がないかデータ未収録の可能性があります。
+                  <br />
+                  <Button
+                    component="a"
+                    href="https://www.sotetsu.co.jp/bus/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="subtle"
+                    color="red"
+                    size="xs"
+                    rightSection={<IconExternalLink size={rem(12)} />}
+                    px={0}
+                  >
+                    相鉄バス公式サイトで確認する
+                  </Button>
+                </Text>
+              )}
+            </Stack>
           </Alert>
         )}
 
