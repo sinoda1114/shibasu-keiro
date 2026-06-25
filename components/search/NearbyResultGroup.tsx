@@ -36,7 +36,12 @@ export function NearbyResultGroup({
   currentSeconds,
 }: NearbyResultGroupProps) {
   const walk = walkMinutes(distanceM)
-  const [nextBus, ...rest] = trips.slice(0, 5)
+  const futureTrips = currentSeconds !== null
+    ? trips.filter(t => t.departureSeconds >= currentSeconds)
+    : trips
+  const [nextBus, ...rest] = futureTrips.slice(0, 5)
+
+  if (!nextBus) return null
 
   return (
     <Stack gap="xs">
