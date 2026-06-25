@@ -300,8 +300,9 @@ function SearchResultContent() {
             radius="md"
           >
             <Text size="sm">
-              相鉄バスのバス停は存在しますが、直通便がないかデータ未収録の可能性があります。
+              相鉄バスのバス停は存在しますが、データ未収録の可能性があります。
               <br />
+              公式サイトで経路のご確認をお願いします。{' '}
               <Button
                 component="a"
                 href="https://www.sotetsu.co.jp/bus/"
@@ -313,7 +314,7 @@ function SearchResultContent() {
                 rightSection={<IconExternalLink size={rem(12)} />}
                 px={0}
               >
-                相鉄バス公式サイトで確認する
+                相鉄バス公式サイト
               </Button>
             </Text>
           </Alert>
