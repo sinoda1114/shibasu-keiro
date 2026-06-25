@@ -13,6 +13,11 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+function migrateProviderName(name: string): string {
+  if (typeof name !== 'string') return name
+  return name.includes('・') ? name.split('・')[0] : name
+}
+
 export function getFavorites(): FavoriteRoute[] {
   if (typeof window === 'undefined') return []
   try {
@@ -20,7 +25,19 @@ export function getFavorites(): FavoriteRoute[] {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed as FavoriteRoute[]
+    const favorites = parsed as FavoriteRoute[]
+    const migrated = favorites.map((f) => {
+      const name = migrateProviderName(f.providerDisplayName)
+      return name !== f.providerDisplayName ? { ...f, providerDisplayName: name } : f
+    })
+    if (migrated.some((f, i) => f !== favorites[i])) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+      } catch {
+        // 書き戻し失敗（容量制限等）でも読み取り結果は返す
+      }
+    }
+    return migrated
   } catch {
     return []
   }
