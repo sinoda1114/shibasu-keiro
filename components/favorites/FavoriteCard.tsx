@@ -53,9 +53,15 @@ export function FavoriteCard({
           <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
             {route.toStopName}
           </Text>
-          {route.providerDisplayName && (
-            <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
-              {route.providerDisplayName}
+          {route.areaId && (
+            <Badge
+              size="xs"
+              variant="light"
+              color={route.areaId === 'nagoya' ? 'blue' : 'teal'}
+              radius="sm"
+              style={{ flexShrink: 0 }}
+            >
+              {route.areaId === 'nagoya' ? '名古屋市' : '横浜市'}
             </Badge>
           )}
         </Group>

@@ -26,7 +26,7 @@ import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/l
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
 import { AreaSelector } from '@/components/search/AreaSelector'
-import { DEFAULT_AREA_ID, getAreaConfig } from '@/lib/providers/providers'
+import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
 type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
@@ -360,18 +360,12 @@ function SearchPageContent() {
   const renderStopOption = ({ option }: { option: string | { value: string; label?: string } }) => {
     const stopName = typeof option === 'string' ? option : option.value
     const isFav = stopFavorites.some(f => f.stopName === stopName && f.areaId === area)
-    const areaConfig = getAreaConfig(area)
     return (
       <Group justify="space-between" style={{ width: '100%' }} wrap="nowrap">
         <Group gap={6} style={{ flex: 1, minWidth: 0 }} wrap="nowrap">
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {stopName}
           </span>
-          {isFav && (
-            <Badge size="xs" variant="light" color="blue" radius="sm" style={{ flexShrink: 0 }}>
-              {areaConfig.providerDisplayNames[0]}
-            </Badge>
-          )}
         </Group>
         <ActionIcon
           variant="transparent"
