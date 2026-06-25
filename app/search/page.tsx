@@ -291,38 +291,45 @@ function SearchResultContent() {
           </Stack>
         )}
 
-        {/* 通常検索 — 結果なし（経路自体が存在しない） */}
-        {!loading && !error && !isNearbyMode && results.length === 0 && (
+        {/* 通常検索 — 結果なし（相鉄バスのバス停は存在するが直通便なし／データ未収録） */}
+        {!loading && !error && !isNearbyMode && results.length === 0 && sotetsuStopsExist && (
           <Alert
             icon={<IconAlertCircle size={rem(16)} />}
             title="直通バスが見つかりませんでした"
             color="red"
             radius="md"
           >
-            <Stack gap="xs">
-              <Text size="sm">
-                {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
-              </Text>
-              {sotetsuStopsExist && (
-                <Text size="sm">
-                  相鉄バスのバス停は存在しますが、直通便がないかデータ未収録の可能性があります。
-                  <br />
-                  <Button
-                    component="a"
-                    href="https://www.sotetsu.co.jp/bus/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="subtle"
-                    color="red"
-                    size="xs"
-                    rightSection={<IconExternalLink size={rem(12)} />}
-                    px={0}
-                  >
-                    相鉄バス公式サイトで確認する
-                  </Button>
-                </Text>
-              )}
-            </Stack>
+            <Text size="sm">
+              相鉄バスのバス停は存在しますが、直通便がないかデータ未収録の可能性があります。
+              <br />
+              <Button
+                component="a"
+                href="https://www.sotetsu.co.jp/bus/"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="subtle"
+                color="red"
+                size="xs"
+                rightSection={<IconExternalLink size={rem(12)} />}
+                px={0}
+              >
+                相鉄バス公式サイトで確認する
+              </Button>
+            </Text>
+          </Alert>
+        )}
+
+        {/* 通常検索 — 結果なし（バス停名が見つからない／経路なし） */}
+        {!loading && !error && !isNearbyMode && results.length === 0 && !sotetsuStopsExist && (
+          <Alert
+            icon={<IconAlertCircle size={rem(16)} />}
+            title="直通バスが見つかりませんでした"
+            color="red"
+            radius="md"
+          >
+            <Text size="sm">
+              {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
+            </Text>
           </Alert>
         )}
 
