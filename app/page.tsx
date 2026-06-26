@@ -24,7 +24,7 @@ import {
 import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
-import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
+import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
@@ -267,7 +267,8 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const area = searchParams.get('area') ?? DEFAULT_AREA_ID
+  const area = searchParams.get('area') ??
+    (typeof window !== 'undefined' ? localStorage.getItem(LAST_AREA_KEY) ?? DEFAULT_AREA_ID : DEFAULT_AREA_ID)
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -285,6 +286,7 @@ function SearchPageContent() {
   const [stopFavorites, setStopFavorites] = useState<StopFavorite[]>(() => getStopFavorites())
 
   const handleAreaChange = (newArea: string) => {
+    localStorage.setItem(LAST_AREA_KEY, newArea)
     setFromStop('')
     setToStop('')
     const params = new URLSearchParams(searchParams.toString())
