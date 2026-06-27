@@ -21,7 +21,7 @@ import {
   Badge,
   rem,
 } from '@mantine/core'
-import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation, IconMapPin, IconFlag } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
