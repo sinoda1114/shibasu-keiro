@@ -464,7 +464,7 @@ function SearchPageContent() {
           value={searchMode}
           onChange={(v) => setSearchMode(v as SearchMode)}
           data={[
-            { label: 'バス停で探す', value: 'stop' },
+            { label: '🚌 バス停で探す', value: 'stop' },
             { label: '📍 近くから探す', value: 'nearby' },
           ]}
           radius="md"
