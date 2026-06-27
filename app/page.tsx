@@ -21,7 +21,7 @@ import {
   Badge,
   rem,
 } from '@mantine/core'
-import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation, IconMapPin, IconFlag } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
@@ -464,7 +464,7 @@ function SearchPageContent() {
           value={searchMode}
           onChange={(v) => setSearchMode(v as SearchMode)}
           data={[
-            { label: 'バス停で探す', value: 'stop' },
+            { label: '🚌 バス停で探す', value: 'stop' },
             { label: '📍 近くから探す', value: 'nearby' },
           ]}
           radius="md"
@@ -495,7 +495,6 @@ function SearchPageContent() {
                       radius="md"
                       size="md"
                       comboboxProps={{ shadow: 'md' }}
-                      leftSection={<IconMapPin size={16} color="var(--mantine-color-blue-6)" />}
                       renderOption={renderStopOption}
                       rightSection={
                         fromLoading ? (
@@ -549,7 +548,6 @@ function SearchPageContent() {
                   radius="md"
                   size="md"
                   comboboxProps={{ shadow: 'md' }}
-                  leftSection={<IconFlag size={16} color="var(--mantine-color-red-5)" />}
                   renderOption={renderStopOption}
                   rightSection={
                     toLoading ? (
