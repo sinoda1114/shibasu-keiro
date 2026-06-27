@@ -21,14 +21,14 @@ import {
   Badge,
   rem,
 } from '@mantine/core'
-import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation, IconMapPin, IconFlag } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
-type DayType = 'auto' | 'weekday' | 'saturday' | 'holiday'
+type DayType = 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
 type SearchMode = 'stop' | 'nearby'
 
@@ -278,7 +278,7 @@ function SearchPageContent() {
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
-  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? 'auto')
+  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? getTodayDayType())
   const [timeMode, setTimeMode] = useState<TimeMode>(() => (searchParams.get('timeMode') as TimeMode) ?? 'depart')
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 
@@ -395,7 +395,6 @@ function SearchPageContent() {
 
   const handleSearch = () => {
     if (!fromStop || !toStop) return
-    const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
     const resolvedTime = specifiedTime
 
     // 「戻る」時に入力状態を復元するため、ホームURLを同期的に更新する
@@ -408,7 +407,7 @@ function SearchPageContent() {
     const params = new URLSearchParams({
       from: fromStop,
       to: toStop,
-      dayType: resolvedDayType,
+      dayType,
       time: resolvedTime,
       timeMode,
       area,
@@ -425,12 +424,11 @@ function SearchPageContent() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setGpsLoading(false)
-        const resolvedDayType = dayType === 'auto' ? getTodayDayType() : dayType
         const params = new URLSearchParams({
           lat: String(pos.coords.latitude),
           lon: String(pos.coords.longitude),
           to: toStop,
-          dayType: resolvedDayType,
+          dayType,
           time: specifiedTime,
           timeMode,
           area,
@@ -497,6 +495,7 @@ function SearchPageContent() {
                       radius="md"
                       size="md"
                       comboboxProps={{ shadow: 'md' }}
+                      leftSection={<IconMapPin size={16} color="var(--mantine-color-blue-6)" />}
                       renderOption={renderStopOption}
                       rightSection={
                         fromLoading ? (
@@ -550,6 +549,7 @@ function SearchPageContent() {
                   radius="md"
                   size="md"
                   comboboxProps={{ shadow: 'md' }}
+                  leftSection={<IconFlag size={16} color="var(--mantine-color-red-5)" />}
                   renderOption={renderStopOption}
                   rightSection={
                     toLoading ? (
@@ -580,10 +580,9 @@ function SearchPageContent() {
                   value={dayType}
                   onChange={(v) => setDayType(v as DayType)}
                   data={[
-                    { label: '自動', value: 'auto' },
                     { label: '平日', value: 'weekday' },
-                    { label: '土曜', value: 'saturday' },
-                    { label: '休日', value: 'holiday' },
+                    { label: <Text size="sm" fw={600} c="blue.7" component="span">土曜</Text>, value: 'saturday' },
+                    { label: <Text size="sm" fw={600} c="red.7" component="span">休日</Text>, value: 'holiday' },
                   ]}
                   radius="md"
                   fullWidth
