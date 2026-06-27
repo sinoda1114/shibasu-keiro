@@ -495,7 +495,6 @@ function SearchPageContent() {
                       radius="md"
                       size="md"
                       comboboxProps={{ shadow: 'md' }}
-                      leftSection={<IconMapPin size={16} color="var(--mantine-color-blue-6)" />}
                       renderOption={renderStopOption}
                       rightSection={
                         fromLoading ? (
@@ -549,7 +548,6 @@ function SearchPageContent() {
                   radius="md"
                   size="md"
                   comboboxProps={{ shadow: 'md' }}
-                  leftSection={<IconFlag size={16} color="var(--mantine-color-red-5)" />}
                   renderOption={renderStopOption}
                   rightSection={
                     toLoading ? (
