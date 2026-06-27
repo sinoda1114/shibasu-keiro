@@ -234,7 +234,12 @@ function SearchResultContent() {
               size="sm"
               radius="md"
               leftSection={<IconClock size={rem(16)} stroke={1.5} />}
-              onClick={() => router.push(`/timetable?stopName=${encodeURIComponent(from)}&provider=${encodeURIComponent(firstProviderId)}`)}
+              onClick={() => {
+                const firstHeadsign = results[0]?.headsign
+                const params = new URLSearchParams({ stopName: from, provider: firstProviderId })
+                if (firstHeadsign) params.set('headsign', firstHeadsign)
+                router.push(`/timetable?${params}`)
+              }}
               style={{ alignSelf: 'flex-start' }}
             >
               {from}の時刻表を見る

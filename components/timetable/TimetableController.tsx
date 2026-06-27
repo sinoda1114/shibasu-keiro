@@ -22,6 +22,7 @@ function getTodayDayType(): DayType {
 interface TimetableControllerProps {
   stopName: string
   provider: string
+  initialHeadsign?: string
 }
 
 type FetchState = {
@@ -33,7 +34,7 @@ type FetchState = {
 
 type FetchAction =
   | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; directions: TimetableDirection[] }
+  | { type: 'FETCH_SUCCESS'; directions: TimetableDirection[]; initialHeadsign?: string }
   | { type: 'FETCH_ERROR'; message: string }
   | { type: 'SET_DIRECTION'; index: string }
 
@@ -48,8 +49,12 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   switch (action.type) {
     case 'FETCH_START':
       return initialFetchState
-    case 'FETCH_SUCCESS':
-      return { loading: false, error: null, directions: action.directions, directionIndex: '0' }
+    case 'FETCH_SUCCESS': {
+      const matched = action.initialHeadsign
+        ? action.directions.findIndex((d) => d.headsign === action.initialHeadsign)
+        : -1
+      return { loading: false, error: null, directions: action.directions, directionIndex: matched >= 0 ? String(matched) : '0' }
+    }
     case 'FETCH_ERROR':
       return { ...state, loading: false, error: action.message }
     case 'SET_DIRECTION':
@@ -63,7 +68,7 @@ function getNowJST(): { hour: number; minute: number } {
   return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
 }
 
-export function TimetableController({ stopName, provider }: TimetableControllerProps) {
+export function TimetableController({ stopName, provider, initialHeadsign }: TimetableControllerProps) {
   const [dayType, setDayType] = useState<DayType>(getTodayDayType)
   const [currentTime] = useState(getNowJST)
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
@@ -79,7 +84,7 @@ export function TimetableController({ stopName, provider }: TimetableControllerP
       .then((r) => r.json())
       .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
         if (!json.success) throw new Error(json.error ?? 'データ取得に失敗しました')
-        dispatch({ type: 'FETCH_SUCCESS', directions: json.data })
+        dispatch({ type: 'FETCH_SUCCESS', directions: json.data, initialHeadsign })
       })
       .catch((e: unknown) =>
         dispatch({
