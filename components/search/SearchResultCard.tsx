@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Card, Group, Text, Badge, Stack, Box, Divider, rem, UnstyledButton } from '@mantine/core'
-import { IconBus, IconClock, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
+import { IconBus, IconClock, IconChevronDown, IconChevronUp, IconMapPin } from '@tabler/icons-react'
 import { BusStopProgress } from './BusStopProgress'
 
 export interface SearchResultCardProps {
@@ -98,7 +98,10 @@ export function SearchResultCard({
               <Text size="xl" fw={800} style={{ lineHeight: 1 }}>
                 {departureTime}
               </Text>
-              <Text size="xs" c="dimmed">発</Text>
+              <Group gap={2} align="center">
+                <IconBus size={rem(11)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                <Text size="xs" c="dimmed">発</Text>
+              </Group>
             </Stack>
 
             <TimeArrow rideMinutes={rideMinutes} />
@@ -107,7 +110,10 @@ export function SearchResultCard({
               <Text size="xl" fw={800} style={{ lineHeight: 1 }}>
                 {arrivalTime}
               </Text>
-              <Text size="xs" c="dimmed">着</Text>
+              <Group gap={2} align="center">
+                <IconMapPin size={rem(11)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                <Text size="xs" c="dimmed">着</Text>
+              </Group>
             </Stack>
           </Group>
 
@@ -204,12 +210,18 @@ export function SearchResultCard({
           <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
             <Stack gap={0} align="center">
               <Text size="md" fw={700}>{departureTime}</Text>
-              <Text size="xs" c="dimmed">発</Text>
+              <Group gap={2} align="center">
+                <IconBus size={rem(10)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                <Text size="xs" c="dimmed">発</Text>
+              </Group>
             </Stack>
             <Text size="xs" c="dimmed">→</Text>
             <Stack gap={0} align="center">
               <Text size="md" fw={700}>{arrivalTime}</Text>
-              <Text size="xs" c="dimmed">着</Text>
+              <Group gap={2} align="center">
+                <IconMapPin size={rem(10)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                <Text size="xs" c="dimmed">着</Text>
+              </Group>
             </Stack>
             {minutesUntil !== null && (
               <Badge color={urgencyColor(minutesUntil)} variant="light" size="sm" radius="sm">
