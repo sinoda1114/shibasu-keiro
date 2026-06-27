@@ -136,8 +136,8 @@ export function SearchResultCard({
                     href={`/timetable?${new URLSearchParams({ stopName: fromStopName, provider, headsign })}`}
                     style={{ display: 'flex', alignItems: 'center', gap: rem(4), textDecoration: 'none', padding: `${rem(2)} 0` }}
                   >
-                    <IconClock size={rem(13)} color="var(--mantine-color-gray-5)" stroke={1.5} />
-                    <Text size="xs" c="gray.5">時刻表</Text>
+                    <IconClock size={rem(13)} color="var(--mantine-color-blue-5)" stroke={1.5} />
+                    <Text size="xs" c="blue.5">時刻表</Text>
                   </Link>
                 )}
                 {canExpand && (
