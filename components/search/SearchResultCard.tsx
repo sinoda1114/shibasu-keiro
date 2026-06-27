@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, Group, Text, Badge, Stack, Box, Divider, rem, UnstyledButton } from '@mantine/core'
 import { IconBus, IconClock, IconChevronDown, IconChevronUp, IconMapPin } from '@tabler/icons-react'
 import { BusStopProgress } from './BusStopProgress'
@@ -126,20 +127,33 @@ export function SearchResultCard({
             </Stack>
           </Group>
 
-          {canExpand && (
+          {(canExpand || (fromStopName && provider)) && (
             <>
               <Divider />
-              <UnstyledButton
-                onClick={() => setExpanded((e) => !e)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: rem(4), width: '100%', padding: `${rem(2)} 0` }}
-              >
-                <Text size="xs" c="blue.5">経路の詳細</Text>
-                {expanded
-                  ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
-                  : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
-                }
-              </UnstyledButton>
-              {expanded && (
+              <Group justify={canExpand && fromStopName && provider ? 'space-between' : 'center'} align="center">
+                {fromStopName && provider && (
+                  <Link
+                    href={`/timetable?${new URLSearchParams({ stopName: fromStopName, provider, headsign })}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: rem(4), textDecoration: 'none', padding: `${rem(2)} 0` }}
+                  >
+                    <IconClock size={rem(13)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                    <Text size="xs" c="gray.5">時刻表</Text>
+                  </Link>
+                )}
+                {canExpand && (
+                  <UnstyledButton
+                    onClick={() => setExpanded((e) => !e)}
+                    style={{ display: 'flex', alignItems: 'center', gap: rem(4), padding: `${rem(2)} 0` }}
+                  >
+                    <Text size="xs" c="blue.5">経路の詳細</Text>
+                    {expanded
+                      ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
+                      : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
+                    }
+                  </UnstyledButton>
+                )}
+              </Group>
+              {expanded && canExpand && (
                 <BusStopProgress
                   tripId={tripId!}
                   fromStopName={fromStopName!}
@@ -241,20 +255,33 @@ export function SearchResultCard({
           </Group>
         </Group>
 
-        {canExpand && (
+        {(canExpand || (fromStopName && provider)) && (
           <>
             <Divider />
-            <UnstyledButton
-              onClick={() => setExpanded((e) => !e)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: rem(4), width: '100%', padding: `${rem(2)} 0` }}
-            >
-              <Text size="xs" c="blue.5">経路の詳細</Text>
-              {expanded
-                ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
-                : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
-              }
-            </UnstyledButton>
-            {expanded && (
+            <Group justify={canExpand && fromStopName && provider ? 'space-between' : 'center'} align="center">
+              {fromStopName && provider && (
+                <Link
+                  href={`/timetable?${new URLSearchParams({ stopName: fromStopName, provider, headsign })}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: rem(4), textDecoration: 'none', padding: `${rem(2)} 0` }}
+                >
+                  <IconClock size={rem(13)} color="var(--mantine-color-gray-5)" stroke={1.5} />
+                  <Text size="xs" c="gray.5">時刻表</Text>
+                </Link>
+              )}
+              {canExpand && (
+                <UnstyledButton
+                  onClick={() => setExpanded((e) => !e)}
+                  style={{ display: 'flex', alignItems: 'center', gap: rem(4), padding: `${rem(2)} 0` }}
+                >
+                  <Text size="xs" c="blue.5">経路の詳細</Text>
+                  {expanded
+                    ? <IconChevronUp size={rem(13)} color="var(--mantine-color-blue-5)" />
+                    : <IconChevronDown size={rem(13)} color="var(--mantine-color-blue-5)" />
+                  }
+                </UnstyledButton>
+              )}
+            </Group>
+            {expanded && canExpand && (
               <BusStopProgress
                 tripId={tripId!}
                 fromStopName={fromStopName!}
