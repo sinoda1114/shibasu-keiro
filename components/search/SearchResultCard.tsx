@@ -28,6 +28,14 @@ function urgencyColor(minutes: number): string {
   return 'blue'
 }
 
+const ROUTE_COLORS = ['red', 'pink', 'grape', 'violet', 'indigo', 'cyan', 'teal', 'green', 'lime', 'yellow', 'orange'] as const
+
+function routeColor(name: string): string {
+  let h = 0
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff
+  return ROUTE_COLORS[h % ROUTE_COLORS.length]
+}
+
 function TimeArrow({ rideMinutes }: { rideMinutes: number }) {
   return (
     <Box style={{ flex: 1, display: 'flex', alignItems: 'center', gap: rem(4), padding: `0 ${rem(4)}` }}>
@@ -60,21 +68,22 @@ export function SearchResultCard({
   const [expanded, setExpanded] = useState(false)
   const canExpand = !!(tripId && fromStopName && toStopName && date)
   if (isNext) {
+    const color = routeColor(routeShortName)
     return (
       <Card
         shadow="sm"
         radius="md"
         withBorder
         style={{
-          borderColor: 'var(--mantine-color-blue-4)',
+          borderColor: `var(--mantine-color-${color}-4)`,
           borderWidth: 2,
         }}
       >
         <Stack gap="xs">
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
-              <IconBus size={rem(18)} color="var(--mantine-color-blue-6)" stroke={1.5} style={{ flexShrink: 0 }} />
-              <Text fw={700} c="blue.7" size="sm" style={{ flexShrink: 0 }}>
+              <IconBus size={rem(18)} color={`var(--mantine-color-${color}-6)`} stroke={1.5} style={{ flexShrink: 0 }} />
+              <Text fw={700} c={`${color}.7`} size="sm" style={{ flexShrink: 0 }}>
                 {routeShortName}
               </Text>
               <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -183,13 +192,14 @@ export function SearchResultCard({
   }
 
   // 通常の候補
+  const color = routeColor(routeShortName)
   return (
     <Card shadow="none" radius="md" withBorder>
       <Stack gap="xs">
         <Group justify="space-between" align="center" wrap="nowrap">
           <Group gap="xs" style={{ minWidth: 0, flex: 1 }}>
-            <IconBus size={rem(16)} color="var(--mantine-color-blue-5)" stroke={1.5} style={{ flexShrink: 0 }} />
-            <Text size="sm" fw={600} c="blue.6" style={{ flexShrink: 0 }}>
+            <IconBus size={rem(16)} color={`var(--mantine-color-${color}-5)`} stroke={1.5} style={{ flexShrink: 0 }} />
+            <Text size="sm" fw={600} c={`${color}.6`} style={{ flexShrink: 0 }}>
               {routeShortName}
             </Text>
             <Text size="sm" c="dimmed" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
