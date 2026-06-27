@@ -8,9 +8,16 @@ import type { DayType, TimetableDirection } from '@/app/api/timetable/route'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
-  { label: '土曜', value: 'saturday' },
-  { label: '休日', value: 'holiday' },
+  { label: <Text size="sm" fw={600} c="blue.7" component="span">土曜</Text>, value: 'saturday' },
+  { label: <Text size="sm" fw={600} c="red.7" component="span">休日</Text>, value: 'holiday' },
 ]
+
+function getTodayDayType(): DayType {
+  const day = new Date().getDay()
+  if (day === 0) return 'holiday'
+  if (day === 6) return 'saturday'
+  return 'weekday'
+}
 
 interface TimetableControllerProps {
   stopName: string
@@ -57,7 +64,7 @@ function getNowJST(): { hour: number; minute: number } {
 }
 
 export function TimetableController({ stopName, provider }: TimetableControllerProps) {
-  const [dayType, setDayType] = useState<DayType>('weekday')
+  const [dayType, setDayType] = useState<DayType>(getTodayDayType)
   const [currentTime] = useState(getNowJST)
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
     fetchReducer,
