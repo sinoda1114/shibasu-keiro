@@ -18,6 +18,7 @@ export function TimetablePageContent() {
   )
   const stopName = fromParam ?? savedStop ?? '栄'
   const provider = searchParams.get('provider') ?? 'nagoya_city_bus'
+  const initialHeadsign = searchParams.get('headsign') ?? undefined
 
-  return <TimetableController stopName={stopName} provider={provider} />
+  return <TimetableController stopName={stopName} provider={provider} initialHeadsign={initialHeadsign} />
 }
