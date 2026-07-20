@@ -52,6 +52,6 @@
     "postcss-simple-vars": "7.0.1",
     "tsx": "4.19.4",
     "typescript": "^5",
-    "vitest": "3.2.6"
+    "vitest": "4.1.10"
   }
 }
