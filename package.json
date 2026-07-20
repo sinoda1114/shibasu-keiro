@@ -22,7 +22,7 @@
     "odpt:import:sotetsu": "npx tsx --env-file=.env.local scripts/odpt/index.ts"
   },
   "dependencies": {
-    "@libsql/client": "0.15.4",
+    "@libsql/client": "0.17.4",
     "@mantine/core": "7.17.4",
     "@mantine/dates": "7.17.4",
     "@mantine/form": "7.17.4",
