@@ -1,62 +1,19 @@
-# CI パイプライン
-#
-# 目的: main への push / PR で「型・lint・テスト・ビルド・脆弱性監査」を一気通貫で検証する。
-# 方針（リポジトリのサプライチェーン規律に従う）:
-#   - 依存解決は必ず `pnpm install --frozen-lockfile`（lockfile 厳守）。
-#   - `.npmrc` の ignore-scripts=true により postinstall は走らない。
-#     ネイティブビルドが必要なパッケージを使う場合は、該当ステップで `pnpm rebuild <pkg>` を足す。
-#   - audit は high 閾値。moderate 以下は CI を落とさない。
-#
-# 注: 本番 env（DB / シークレット等）が build/test に不要になるよう、env 検証は遅延化し、
-#     DB を読むページは force-dynamic にしておくと CI が env 無しで通る。
+# 標準CI呼び出し（実体: https://github.com/sinoda1114/ci-standard）
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  push:
     branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    name: typecheck / lint / test / build / audit
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.5.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: pnpm tsc --noEmit
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test --run
-
-      - name: Build
-        env:
-          TURSO_DATABASE_URL: "file::memory:"
-        run: pnpm build
-
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+  ci:
+    uses: sinoda1114/ci-standard/.github/workflows/node-ci.yml@main
+    secrets: inherit
