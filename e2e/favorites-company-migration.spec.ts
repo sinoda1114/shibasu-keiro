@@ -22,10 +22,9 @@ test.describe('ルートお気に入りの会社名マイグレーション', ()
     await expect(page.getByText('横浜駅西口')).toBeVisible()
     await expect(page.getByText('梅の木')).toBeVisible()
 
-    // バッジに「・」が含まれないこと（マイグレーション済み）
+    // カードのバッジはエリア名を表示する（PR #79 で会社名表示から変更）
     const badgeText = await page.locator('.mantine-Badge-label').first().textContent()
-    expect(badgeText).not.toContain('・')
-    expect(badgeText).toBe('横浜市営バス')
+    expect(badgeText).toBe('横浜市')
 
     // localStorageのデータもマイグレーション済みに更新されていること
     const storedData = await page.evaluate(() => {

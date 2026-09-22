@@ -99,6 +99,8 @@ test.describe('ルートお気に入りの会社名保存', () => {
   test('横浜駅西口→梅の木は相鉄バスとして保存される（APIモック）', async ({ page }) => {
     await mockDirectRoutes(page, buildRouteResults('相鉄バス', 'sotetsu_bus', 2))
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
+    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
+    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
@@ -115,6 +117,8 @@ test.describe('ルートお気に入りの会社名保存', () => {
   test('横浜駅前→高島町は横浜市営バスとして保存される（APIモック）', async ({ page }) => {
     await mockDirectRoutes(page, buildRouteResults('横浜市営バス', 'yokohama_city_bus', 2))
     await page.goto('/search?from=横浜駅前&to=高島町&area=yokohama')
+    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
+    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
@@ -135,6 +139,8 @@ test.describe('ルートお気に入りの会社名保存', () => {
     ]
     await mockDirectRoutes(page, results)
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
+    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
+    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
