@@ -25,6 +25,7 @@ import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLo
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
+import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
@@ -267,8 +268,9 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const isHydrated = useIsHydrated()
   const area = searchParams.get('area') ??
-    (typeof window !== 'undefined' ? localStorage.getItem(LAST_AREA_KEY) ?? DEFAULT_AREA_ID : DEFAULT_AREA_ID)
+    (isHydrated ? localStorage.getItem(LAST_AREA_KEY) : null) ?? DEFAULT_AREA_ID
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -634,7 +636,7 @@ function SearchPageContent() {
           </form>
         </Card>
 
-        {history.length > 0 && (
+        {isHydrated && history.length > 0 && (
           <Stack gap="xs">
             <Text size="xs" c="dimmed">最近の検索</Text>
             <Stack gap={4}>
