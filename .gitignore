@@ -50,3 +50,7 @@ next-env.d.ts
 # Playwright
 playwright-report/
 test-results/
+
+# CI 用の一時SQLite（.github/ci.env の TURSO_DATABASE_URL=file:ci.db が生成する）
+/ci.db
+/ci.db-*
