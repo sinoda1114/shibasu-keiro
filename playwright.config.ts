@@ -23,7 +23,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      TURSO_DATABASE_URL: 'file::memory:',
+      // file::memory: はプロセスごとに別の DB になるため、db:migrate を適用した
+      // プロセスとこの dev サーバーが別々の空 DB を見て "no such table" で落ちる。
+      // 外から TURSO_DATABASE_URL が与えられていればそれを使う（CI は .github/ci.env の file:ci.db）。
+      TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL ?? 'file::memory:',
     },
   },
 })
