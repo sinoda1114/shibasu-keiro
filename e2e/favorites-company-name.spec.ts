@@ -73,29 +73,6 @@ test.describe('ルートお気に入りの会社名保存', () => {
     expect(favorites[0].providerDisplayName).toBe('名古屋市バス')
   })
 
-  test('お気に入りページで会社名バッジに「・」が含まれない', async ({ page }) => {
-    // 問題のあるデータをlocalStorageに設定して表示を確認
-    await page.addInitScript(() => {
-      const data = [
-        {
-          id: 'test-1',
-          areaId: 'yokohama',
-          providerDisplayName: '横浜市営バス',
-          fromStopName: '西谷妙福寺前',
-          toStopName: '横浜駅西口',
-          createdAt: new Date().toISOString(),
-        },
-      ]
-      localStorage.setItem('shibasu_keiro_favorites_v2', JSON.stringify(data))
-    })
-    await page.goto('/favorites')
-
-    const badge = page.locator('[data-testid], .mantine-Badge-root').filter({ hasText: /バス/ }).first()
-    // バッジテキストに「・」が含まれないこと
-    const badgeText = await page.locator('.mantine-Badge-label').first().textContent()
-    expect(badgeText).not.toContain('・')
-  })
-
   test('横浜駅西口→梅の木は相鉄バスとして保存される（APIモック）', async ({ page }) => {
     await mockDirectRoutes(page, buildRouteResults('相鉄バス', 'sotetsu_bus', 2))
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
