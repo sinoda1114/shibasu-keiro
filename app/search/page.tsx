@@ -17,8 +17,8 @@ import {
   rem,
 } from '@mantine/core'
 import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin, IconExternalLink } from '@tabler/icons-react'
-import { notifications } from '@mantine/notifications'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
+import { notifyFavoriteUnsaved } from '@/components/favorites/notify-favorite-unsaved'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
@@ -43,14 +43,6 @@ const DAY_TYPE_LABELS: Record<string, string> = {
   weekday: '平日',
   saturday: '土曜',
   holiday: '休日',
-}
-
-// localStorage が遮断・容量超過のとき。★の見た目だけ変えると保存されたと誤解させるので、変えずに知らせる
-function notifyFavoriteUnsaved() {
-  notifications.show({
-    color: 'red',
-    message: 'この環境ではお気に入りを保存できません。ブラウザの設定でサイトデータの保存が無効になっている可能性があります。',
-  })
 }
 
 function formatYYYYMMDD(d: Date): string {

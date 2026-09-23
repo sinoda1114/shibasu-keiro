@@ -17,6 +17,7 @@ import {
 } from '@/lib/favorites/local-storage'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { FavoriteCard } from './FavoriteCard'
+import { notifyFavoriteUnsaved } from './notify-favorite-unsaved'
 
 export function FavoritesList() {
   const router = useRouter()
@@ -24,12 +25,12 @@ export function FavoritesList() {
   const [routes, setRoutes] = useState<FavoriteRoute[]>(() => getFavorites())
 
   const handleReverse = useCallback((id: string) => {
-    reverseFavorite(id)
+    if (!reverseFavorite(id)) notifyFavoriteUnsaved()
     setRoutes(getFavorites())
   }, [])
 
   const handleDelete = useCallback((id: string) => {
-    removeFavorite(id)
+    if (!removeFavorite(id)) notifyFavoriteUnsaved()
     setRoutes(getFavorites())
   }, [])
 
