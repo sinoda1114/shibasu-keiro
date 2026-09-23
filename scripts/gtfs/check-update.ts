@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import { gtfsVersions } from '../../lib/db/schema'
 import { isOdptFilesUrl, resolveOdptUrl } from './utils'
 
@@ -46,7 +46,7 @@ export async function checkUpdate(url: string, providerId: string): Promise<Upda
     (etag ? `etag:${etag}` : lastModified ? `lm:${lastModified}` : `ts:${Date.now()}`)
 
   // staging は失敗残骸の可能性があるため除外し、active/archived のみを比較対象とする
-  const latest = await db
+  const latest = await getDb()
     .select({ sourceHash: gtfsVersions.sourceHash })
     .from(gtfsVersions)
     .where(
