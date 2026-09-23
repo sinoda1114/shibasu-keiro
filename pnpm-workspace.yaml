@@ -2,3 +2,8 @@ allowBuilds:
   esbuild: false
   sharp: false
   unrs-resolver: false
+overrides:
+  # drizzle-kit 0.31.x が依存に持つ @esbuild-kit/core-utils（非推奨・実行時は未使用）が
+  # esbuild ~0.18.20 を要求し、GHSA-67mh-4wv8-2f99（<=0.24.2）に該当するため引き上げる。
+  # drizzle-kit が @esbuild-kit を外したら削除する。
+  '@esbuild-kit/core-utils>esbuild': 0.25.12
