@@ -5,7 +5,10 @@ import { isolatedDatabaseUrl } from './e2e/database-url'
 // 既存サーバーを再利用すると webServer.env が届かず、E2E が .env.local の DB を見てしまうため。
 // 同じ worktree で pnpm dev が動いていると .next を取り合って起動できないので、止めてから実行する。
 // E2E_PORT は worktree を並行させるときの上書き用
-const E2E_PORT = Number(process.env.E2E_PORT ?? 3100)
+const E2E_PORT = Number(process.env.E2E_PORT || 3100)
+if (!Number.isInteger(E2E_PORT) || E2E_PORT <= 0 || E2E_PORT > 65535) {
+  throw new Error(`E2E_PORT は 1〜65535 の整数で指定してください（受け取った値: ${process.env.E2E_PORT}）`)
+}
 
 export default defineConfig({
   testDir: './e2e',
