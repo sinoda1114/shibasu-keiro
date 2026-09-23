@@ -1,4 +1,7 @@
 import type { OdptBusstopPole, OdptBusroutePattern, OdptBusTimetable } from './types'
+import { isOdptAuthFailure, odptAuthError } from '../gtfs/utils'
+
+const KEY_LOCATION = '.env.local の ODPT_CONSUMER_KEY'
 
 const BASE_URL = 'https://api.odpt.org/api/v4'
 const OPERATOR = 'odpt.Operator:SotetsuBus'
@@ -8,6 +11,7 @@ const OPERATOR = 'odpt.Operator:SotetsuBus'
 async function fetchAll<T>(resource: string, consumerKey: string): Promise<T[]> {
   const url = `${BASE_URL}/${resource}?odpt:operator=${OPERATOR}&acl:consumerKey=${consumerKey}`
   const res = await fetch(url)
+  if (isOdptAuthFailure(res.status)) throw odptAuthError(res.status, KEY_LOCATION)
   if (!res.ok) throw new Error(`ODPT API ${resource} failed: ${res.status} ${res.statusText}`)
   return (await res.json()) as T[]
 }
@@ -28,6 +32,7 @@ export async function fetchLatestDcDate(consumerKey: string): Promise<string | n
   // 1件でも取得できれば dc:date を返す（全件フェッチは重いため BusstopPole で代用）
   const url = `${BASE_URL}/odpt:BusstopPole?odpt:operator=${OPERATOR}&acl:consumerKey=${consumerKey}`
   const res = await fetch(url)
+  if (isOdptAuthFailure(res.status)) throw odptAuthError(res.status, KEY_LOCATION)
   if (!res.ok) throw new Error(`ODPT API probe failed: ${res.status} ${res.statusText}`)
   const records = (await res.json()) as Array<{ 'dc:date'?: string }>
   return records[0]?.['dc:date'] ?? null

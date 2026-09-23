@@ -69,6 +69,13 @@ describe('resolveOdptUrl', () => {
     expect(result?.date).toMatch(/^\d{8}$/)
   })
 
+  it('ODPT が 403 を返したら、キーが原因と分かる文言で止まり、キーの値は含めないこと', async () => {
+    vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
+    const run = resolveOdptUrl('https://api.odpt.org/api/v4/files/odpt/YokohamaMunicipal/Bus.zip?acl:consumerKey=SECRET_TEST_TOKEN')
+    await expect(run).rejects.toThrow(/認証エラー（HTTP 403）[\s\S]*YOKOHAMA_GTFS_URL/)
+    await expect(run).rejects.not.toThrow(/SECRET_TEST_TOKEN/)
+  })
+
   it('6ヶ月分すべて 302 でなければ null を返すこと', async () => {
     const mockFetch = vi.mocked(fetch)
     // 6回 304 を返す

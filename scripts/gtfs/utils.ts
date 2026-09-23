@@ -39,6 +39,21 @@ export function isOdptFilesUrl(url: string): boolean {
 }
 
 /**
+ * ODPT が認証エラー（401 / 403）を返したときのエラー。キーの失効・停止に気付けるよう、
+ * 原因と更新すべき場所を書く。URL にはキーが入るので、URL もキーも含めない。
+ */
+export function odptAuthError(status: number, keyLocation: string): Error {
+  return new Error(
+    `ODPT が認証エラー（HTTP ${status}）を返しました。API キー（acl:consumerKey）が無効か、停止されている可能性があります。` +
+    `ODPT の開発者サイトでキーを確認・再発行し、${keyLocation} を更新してください。`
+  )
+}
+
+export function isOdptAuthFailure(status: number): boolean {
+  return status === 401 || status === 403
+}
+
+/**
  * ODPT Files URL に date パラメーターを付けてリクエストし、
  * 302 リダイレクト先の Azure Blob URL を返す（最大6ヶ月遡る）。
  *
@@ -61,6 +76,7 @@ export async function resolveOdptUrl(
     const tryUrl = `${baseUrl}?date=${date}&acl:consumerKey=${token}`
 
     const r = await fetch(tryUrl, { redirect: 'manual' })
+    if (isOdptAuthFailure(r.status)) throw odptAuthError(r.status, 'GitHub の Secret YOKOHAMA_GTFS_URL')
     if (r.status === 302) {
       const location = r.headers.get('location')
       if (location) return { blobUrl: location, date }
