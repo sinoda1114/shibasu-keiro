@@ -47,6 +47,14 @@ function getNowTime(): string {
   return `${hh}:${mm}`
 }
 
+function readLastArea(): string | null {
+  try {
+    return localStorage.getItem(LAST_AREA_KEY)
+  } catch {
+    return null
+  }
+}
+
 async function fetchStopSuggestions(query: string, area: string): Promise<string[]> {
   if (query.length === 0) return []
   const res = await fetch(
@@ -219,6 +227,7 @@ function WheelColumn({
 
 function TimePickerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [opened, setOpened] = useState(false)
+  const isHydrated = useIsHydrated()
   const [hour, minute] = value.split(':').map((n) => parseInt(n, 10))
 
   const setHour = (h: number) =>
@@ -239,7 +248,7 @@ function TimePickerInput({ value, onChange }: { value: string; onChange: (v: str
           size="md"
           styles={{ input: { textAlign: 'left', cursor: 'pointer' } }}
         >
-          {value}
+          {isHydrated ? value : null}
         </Input>
       </Popover.Target>
       <Popover.Dropdown p="md">
@@ -270,7 +279,7 @@ function SearchPageContent() {
 
   const isHydrated = useIsHydrated()
   const area = searchParams.get('area') ??
-    (isHydrated ? localStorage.getItem(LAST_AREA_KEY) : null) ?? DEFAULT_AREA_ID
+    (isHydrated ? readLastArea() : null) ?? DEFAULT_AREA_ID
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -577,7 +586,7 @@ function SearchPageContent() {
                   ダイヤ区分
                 </Text>
                 <SegmentedControl
-                  value={dayType}
+                  value={isHydrated ? dayType : ''}
                   onChange={(v) => setDayType(v as DayType)}
                   data={[
                     { label: '平日', value: 'weekday' },
