@@ -3,7 +3,7 @@ import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db/client'
 import { busStops, busStopTimes, busTrips } from '@/lib/db/schema'
 import { getActiveVersionId, resolveServiceIds } from '@/lib/gtfs/service-resolver'
-import { formatJstYYYYMMDD, isYYYYMMDD } from '@/lib/jst'
+import { formatJstYYYYMMDD, getServiceDate, isDayType, isYYYYMMDD } from '@/lib/jst'
 
 export interface TimetableDirection {
   headsign: string
@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
   const stopName = searchParams.get('stopName')?.trim()
   // 検索（/api/routes/direct）と同じく日付で運行日を引き、calendar_dates の例外（祝日・年末年始の運休や臨時便）を反映する
   const dateParam = searchParams.get('date')
-  const dateStr = dateParam ?? formatJstYYYYMMDD()
+  // 更新前の画面（開いたままのタブ）は date を送らず dayType だけを送る。黙って今日の時刻表を返さず、
+  // その区分の代表日で引く。画面の更新が行き渡ったら、この分岐は消してよい
+  const legacyDayType = searchParams.get('dayType')
+  const dateStr = dateParam ?? (isDayType(legacyDayType) ? getServiceDate(legacyDayType) : formatJstYYYYMMDD())
   // 日付なしの URL は日付が変わると別の時刻表を指すので、CDN に残さない
   const cacheControl = dateParam === null ? 'no-store' : 's-maxage=3600, stale-while-revalidate=86400'
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'

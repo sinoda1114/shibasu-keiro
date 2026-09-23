@@ -267,6 +267,15 @@ describe('/api/timetable（実 DB）', () => {
     expect(res.headers.get('Cache-Control')).toBe('no-store')
   })
 
+  it('date が無く dayType だけの要求（更新前の画面）は、その区分の代表日で引く', async () => {
+    // 木曜（10/1）に「休日」を選んだ更新前の画面は、日曜（10/4）の休日ダイヤ（10:00）を見たい
+    fixClock('2026-10-01T03:00:00Z')
+    const res = await getResponse(timetable, '/api/timetable?stopName=横浜駅前&provider=yokohama_city_bus&dayType=holiday')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+    expect(entriesOf(await res.json())).toEqual([{ hour: 10, minutes: [0] }])
+  })
+
   it('date を指定した応答はキャッシュさせる（運行が無い日の空の応答も）', async () => {
     const running = await getResponse(timetable, url('横浜駅前', 'yokohama_city_bus', THURSDAY))
     expect(running.headers.get('Cache-Control')).toContain('s-maxage=')
