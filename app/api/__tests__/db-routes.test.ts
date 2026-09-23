@@ -134,6 +134,11 @@ describe('/api/routes/direct（実 DB）', () => {
     expect(body.data).toEqual([expect.objectContaining({ tripId: 'S1', providerDisplayName: '相鉄バス' })])
   })
 
+  it('エリアの全事業者に有効な版があれば missingProviders は空配列', async () => {
+    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${THURSDAY}`)
+    expect(body.missingProviders).toEqual([])
+  })
+
   it('逆方向（停車順が逆）は直通便として返さない', async () => {
     const { body } = await getJson(directRoutes, `/api/routes/direct?from=高島町&to=横浜駅前&area=yokohama&date=${THURSDAY}`)
     expect(body.data).toEqual([])

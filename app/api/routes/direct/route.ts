@@ -26,6 +26,15 @@ export interface DirectRouteResult {
   providerDisplayName: string
 }
 
+export interface DirectRouteResponse {
+  success: true
+  data: DirectRouteResult[]
+  date: string
+  sotetsuStopsExist: boolean
+  /** 有効な GTFS の版が無く、検索できなかった事業者の ID。欠けが無ければ空配列 */
+  missingProviders: string[]
+}
+
 async function queryOneProvider(
   providerId: string,
   fromName: string,
@@ -179,16 +188,19 @@ export async function GET(req: NextRequest) {
     .flat()
     .sort((a, b) => a.departureSeconds - b.departureSeconds)
 
-  const hasSotetsu = area.providerIds.includes('sotetsu_bus')
+  const { missingProviders } = outcome
+  // 版の無い相鉄バスは調べない（「バス停はあるが未収録」ではなく missingProviders の注意書きで伝える）
+  const hasSotetsu = area.providerIds.includes('sotetsu_bus') && !missingProviders.includes('sotetsu_bus')
   const sotetsuStopsExist = hasSotetsu && data.length === 0
     ? await checkSotetsuStopsExist(fromName, toName)
     : false
 
   // 一部の事業者が欠けた結果は、データが戻った後も CDN に残り続けないようキャッシュしない
-  const cacheControl = outcome.hasMissingProvider
+  const cacheControl = missingProviders.length > 0
     ? 'no-store'
     : 's-maxage=3600, stale-while-revalidate=86400'
-  return NextResponse.json({ success: true, data, date: dateStr, sotetsuStopsExist }, {
+  const body: DirectRouteResponse = { success: true, data, date: dateStr, sotetsuStopsExist, missingProviders }
+  return NextResponse.json(body, {
     headers: { 'Cache-Control': cacheControl },
   })
 }

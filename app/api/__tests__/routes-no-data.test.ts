@@ -113,6 +113,19 @@ describe('/api/routes/direct（有効な版が無い事業者がある）', () =
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
+  it('一部の事業者だけ版が無ければ、応答の missingProviders にその事業者を入れる（画面が「便なし」と誤案内しないように）', async () => {
+    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${THURSDAY}`)
+    expect(body.missingProviders).toEqual(['sotetsu_bus'])
+  })
+
+  it('結果が空でも missingProviders を返す（版の無い相鉄バスは「バス停はあるが未収録」の案内に回さない）', async () => {
+    const { status, body } = await getJson(directRoutes, `/api/routes/direct?from=高島町&to=横浜駅前&area=yokohama&date=${THURSDAY}`)
+    expect(status).toBe(200)
+    expect(body.data).toEqual([])
+    expect(body.missingProviders).toEqual(['sotetsu_bus'])
+    expect(body.sotetsuStopsExist).toBe(false)
+  })
+
   it('版のある事業者で便が無いだけなら、これまでどおり 200 の空配列（503 にしない）', async () => {
     const { status, body } = await getJson(directRoutes, `/api/routes/direct?from=高島町&to=横浜駅前&area=yokohama&date=${THURSDAY}`)
     expect(status).toBe(200)
@@ -141,6 +154,7 @@ describe('/api/routes/nearby（有効な版が無い事業者がある）', () =
         trips: [expect.objectContaining({ tripId: 'T1', providerDisplayName: '横浜市営バス' })],
       }),
     ])
+    expect(body.missingProviders).toEqual(['sotetsu_bus'])
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('sotetsu_bus'))
     expect(errorSpy).not.toHaveBeenCalled()
   })

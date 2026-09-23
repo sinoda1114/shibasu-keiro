@@ -3,14 +3,15 @@ import { NextResponse } from 'next/server'
 export const NO_ACTIVE_VERSION_ERROR = '時刻表のデータを準備中です。時間をおいて再度お試しください。'
 
 export type ProviderResultsOutcome<T> =
-  | { ok: true; results: T[]; hasMissingProvider: boolean }
+  | { ok: true; results: T[]; missingProviders: string[] }
   | { ok: false; response: NextResponse }
 
 /**
  * 事業者ごとの検索結果をまとめる。有効な GTFS の版が無い事業者の結果は null で受け取る。
  * 版が無いのはインポートの障害で、「便が無い」（空配列）とは別物として扱う（#70）。
  * - エリアの全事業者に版が無い: 503 とエラーの文言を返す（画面は「直通便なし」ではなくエラーを出す）
- * - 一部の事業者だけ版が無い: ログに残し、版のある事業者の結果で続ける（一部の欠落で全体を落とさない）
+ * - 一部の事業者だけ版が無い: ログに残し、版のある事業者の結果で続ける（一部の欠落で全体を落とさない）。
+ *   欠けた事業者は missingProviders で返し、応答に含めて画面が注意書きを出せるようにする
  */
 export function collectProviderResults<T>(
   routeName: string,
@@ -37,6 +38,6 @@ export function collectProviderResults<T>(
   return {
     ok: true,
     results: results.filter((r): r is T => r !== null),
-    hasMissingProvider: missing.length > 0,
+    missingProviders: missing,
   }
 }

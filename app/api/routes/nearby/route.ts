@@ -34,6 +34,8 @@ export interface NearbyRouteResponse {
   success: boolean
   data: NearbyStop[]
   date: string
+  /** 有効な GTFS の版が無く、検索できなかった事業者の ID。欠けが無ければ空配列 */
+  missingProviders: string[]
 }
 
 // 500m の緯度・経度オフセット（概算）
@@ -272,5 +274,6 @@ export async function GET(req: NextRequest) {
 
   const data = Array.from(merged.values()).sort((a, b) => a.distanceM - b.distanceM)
 
-  return NextResponse.json({ success: true, data, date: dateStr })
+  const body: NearbyRouteResponse = { success: true, data, date: dateStr, missingProviders: outcome.missingProviders }
+  return NextResponse.json(body)
 }

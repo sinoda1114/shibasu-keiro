@@ -19,7 +19,7 @@ import {
 import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin, IconExternalLink } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { notifyFavoriteUnsaved } from '@/components/favorites/notify-favorite-unsaved'
-import { getAreaConfig } from '@/lib/providers/providers'
+import { getAreaConfig, providerIdToDisplayName } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
@@ -66,6 +66,8 @@ interface SearchResponse {
   results: DirectRouteResult[]
   nearbyResults: NearbyStop[]
   sotetsuStopsExist: boolean
+  /** 有効な GTFS の版が無く、API が検索できなかった事業者の ID */
+  missingProviders: string[]
   error: string | null
 }
 
@@ -98,6 +100,7 @@ function SearchResultContent() {
   const results = current?.results ?? []
   const nearbyResults = current?.nearbyResults ?? []
   const sotetsuStopsExist = current?.sotetsuStopsExist ?? false
+  const missingProviders = current?.missingProviders ?? []
   const error = current?.error ?? null
 
   // お気に入り済みかどうかも区間のキーと一緒に持つ。区間が変われば保存領域から読み直す。
@@ -115,7 +118,7 @@ function SearchResultContent() {
     const controller = new AbortController()
     const settle = (partial: Partial<Omit<SearchResponse, 'key'>>) => {
       if (controller.signal.aborted) return
-      setResponse({ key: requestKey, results: [], nearbyResults: [], sotetsuStopsExist: false, error: null, ...partial })
+      setResponse({ key: requestKey, results: [], nearbyResults: [], sotetsuStopsExist: false, missingProviders: [], error: null, ...partial })
     }
     const onNetworkError = (err: unknown) => {
       if (err instanceof Error && err.name !== 'AbortError') settle({ error: '通信エラーが発生しました' })
@@ -127,8 +130,8 @@ function SearchResultContent() {
         { signal: controller.signal }
       )
         .then((r) => r.json())
-        .then((json: { success: boolean; data?: NearbyStop[]; error?: string }) => {
-          if (json.success) settle({ nearbyResults: json.data ?? [] })
+        .then((json: { success: boolean; data?: NearbyStop[]; error?: string; missingProviders?: string[] }) => {
+          if (json.success) settle({ nearbyResults: json.data ?? [], missingProviders: json.missingProviders ?? [] })
           else settle({ error: json.error ?? '検索に失敗しました' })
         })
         .catch(onNetworkError)
@@ -138,9 +141,16 @@ function SearchResultContent() {
         { signal: controller.signal }
       )
         .then((r) => r.json())
-        .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string; sotetsuStopsExist?: boolean }) => {
-          if (json.success) settle({ results: json.data ?? [], sotetsuStopsExist: json.sotetsuStopsExist ?? false })
-          else settle({ error: json.error ?? '検索に失敗しました' })
+        .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string; sotetsuStopsExist?: boolean; missingProviders?: string[] }) => {
+          if (json.success) {
+            settle({
+              results: json.data ?? [],
+              sotetsuStopsExist: json.sotetsuStopsExist ?? false,
+              missingProviders: json.missingProviders ?? [],
+            })
+          } else {
+            settle({ error: json.error ?? '検索に失敗しました' })
+          }
         })
         .catch(onNetworkError)
     }
@@ -159,6 +169,12 @@ function SearchResultContent() {
   const lastBus = !isArriveMode && results.length > 0 ? results[results.length - 1] : null
   const [nextBus, ...restBuses] = filtered
   const otherBuses = restBuses.slice(0, 4)
+  // データが無く検索できなかった事業者は「直通バスはありません」の根拠に含めない
+  const missingProviderNames = missingProviders.map(providerIdToDisplayName).join('・')
+  const searchedProviderNames = areaConfig.providerIds
+    .filter((id) => !missingProviders.includes(id))
+    .map(providerIdToDisplayName)
+    .join('・')
 
   return (
     <Container size="sm" py="md" px="md">
@@ -257,6 +273,18 @@ function SearchResultContent() {
           </Alert>
         )}
 
+        {/* 一部の事業者の時刻表データが無い（結果の有無にかかわらず、その事業者の便を表示していないことを伝える） */}
+        {!loading && !error && missingProviders.length > 0 && (
+          <Alert
+            icon={<IconAlertCircle size={rem(16)} />}
+            title="一部の時刻表データを準備中です"
+            color="yellow"
+            radius="md"
+          >
+            {missingProviderNames}の時刻表データを準備中のため、{missingProviderNames}の便は表示していません。
+          </Alert>
+        )}
+
         {/* 近くから探す — 結果 */}
         {!loading && !error && isNearbyMode && nearbyResults.length === 0 && (
           <Alert
@@ -325,7 +353,7 @@ function SearchResultContent() {
             radius="md"
           >
             <Text size="sm">
-              {from} から {to} への直通バスはありません（{areaConfig.providerDisplayNames.join('・')}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
+              {from} から {to} への直通バスはありません（{searchedProviderNames}のデータで検索）。バス停名を確認するか、別の停留所名をお試しください。
             </Text>
           </Alert>
         )}
