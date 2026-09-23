@@ -72,6 +72,21 @@ describe('TimetableController の対象日の表示', () => {
   })
 })
 
+describe('TimetableController の過ぎた便と次の便の表示', () => {
+  it('今日の時刻表では次の便を強調し、別の日の時刻表では今の時刻で強調しない', async () => {
+    respond([{ headsign: '名古屋駅', entries: [{ hour: 13, minutes: [30] }], lastDeparture: { hour: 13, minute: 30 } }])
+    renderAt('2026-10-13T12:00:00+09:00')
+    await screen.findByText('10/13（火）の運行')
+    await waitFor(() => expect(screen.getByText('30').closest('.mantine-Badge-root')).not.toBeNull())
+
+    fireEvent.click(screen.getByText('土曜'))
+
+    await screen.findByText('10/17（土）の運行')
+    await waitFor(() => expect(requestedDates()).toEqual(['20261013', '20261017']))
+    await waitFor(() => expect(screen.getByText('30').closest('.mantine-Badge-root')).toBeNull())
+  })
+})
+
 describe('TimetableController の応答の到着順', () => {
   it('区分を切り替えた後に前の区分の応答が遅れて届いても、今の区分の日付と便だけを出す', async () => {
     // 呼ばれた順に応答を保留し、テストから好きな順で返す

@@ -198,7 +198,7 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
           <TimetableView
             entries={entries}
             lastDeparture={selectedDirection?.lastDeparture}
-            currentTime={currentTime}
+            currentTime={date === clock.today ? currentTime : undefined}
           />
         </>
       )}
