@@ -113,12 +113,11 @@ test.describe('ルートお気に入りの会社名保存', () => {
     await page.route('/api/routes/direct*', async (route) => {
       markRequested()
       await responseReleased
-      // 開発モードの StrictMode で中断された初回リクエストは fulfill できないため失敗を無視する
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ success: true, data: buildRouteResults('相鉄バス', 'sotetsu_bus', 2), date: '20240101' }),
-      }).catch(() => {})
+      })
     })
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
     await requested
@@ -136,6 +135,39 @@ test.describe('ルートお気に入りの会社名保存', () => {
 
     expect(favorites).toHaveLength(1)
     expect(favorites[0].providerDisplayName).toBe('相鉄バス')
+  })
+
+  test('同じページのまま検索条件が変わったら、再取得中は★を押せず新しい結果の社名で保存される（APIモック）', async ({ page }) => {
+    let releaseSecond!: () => void
+    const secondReleased = new Promise<void>((resolve) => { releaseSecond = resolve })
+    let markSecondRequested!: () => void
+    const secondRequested = new Promise<void>((resolve) => { markSecondRequested = resolve })
+    await page.route('/api/routes/direct*', async (route) => {
+      const isSecond = new URL(route.request().url()).searchParams.get('to') === '高島町'
+      if (isSecond) {
+        markSecondRequested()
+        await secondReleased
+      }
+      const [name, id] = isSecond ? ['横浜市営バス', 'yokohama_city_bus'] : ['相鉄バス', 'sotetsu_bus']
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: buildRouteResults(name, id, 2), date: '20240101' }),
+      })
+    })
+    await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
+    const addButton = page.getByRole('button', { name: 'お気に入りに追加' })
+    await expect(addButton).toBeEnabled()
+
+    await page.evaluate(() => history.pushState(null, '', '/search?from=横浜駅前&to=高島町&area=yokohama'))
+    await secondRequested
+    await expect(addButton).toBeDisabled()
+
+    releaseSecond()
+    await addButton.click()
+    const favorites = await page.evaluate(() => JSON.parse(localStorage.getItem('shibasu_keiro_favorites_v2') ?? '[]'))
+    expect(favorites).toHaveLength(1)
+    expect(favorites[0]).toMatchObject({ fromStopName: '横浜駅前', toStopName: '高島町', providerDisplayName: '横浜市営バス' })
   })
 
   test('複数社混在時は最多便数の会社名が保存される（APIモック）', async ({ page }) => {

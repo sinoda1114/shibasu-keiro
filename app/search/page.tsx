@@ -108,7 +108,12 @@ function SearchResultContent() {
 
   const [results, setResults] = useState<DirectRouteResult[]>([])
   const [nearbyResults, setNearbyResults] = useState<NearbyStop[]>([])
-  const [loading, setLoading] = useState(!!(isNearbyMode ? (lat && lon && to) : (from && to)))
+  // loading は「今の検索条件に対する応答が届いたか」から導く。条件が変われば自動で読み込み中に戻り、
+  // 中断されたリクエスト（StrictMode の再実行や条件変更）は完了扱いにならない
+  const requestKey = JSON.stringify([from, to, lat, lon, isNearbyMode, dayType, area])
+  const willFetch = isNearbyMode ? !!(lat && lon && to) : !!(from && to)
+  const [settledKey, setSettledKey] = useState<string | null>(null)
+  const loading = willFetch && settledKey !== requestKey
   const [error, setError] = useState<string | null>(null)
   const [sotetsuStopsExist, setSotetsuStopsExist] = useState(false)
   const [isFavorited, setIsFavorited] = useState(() => {
@@ -119,10 +124,8 @@ function SearchResultContent() {
   useEffect(() => {
     const date = getDayTypeDate(dayType)
     const controller = new AbortController()
-    // 中断されたリクエスト（StrictMode の再実行や条件変更）で読み込み完了扱いにすると、
-    // 後続リクエストの応答前に loading が false になりお気に入り追加を押せてしまう
     const finishLoading = () => {
-      if (!controller.signal.aborted) setLoading(false)
+      if (!controller.signal.aborted) setSettledKey(requestKey)
     }
 
     if (isNearbyMode && to) {
@@ -160,7 +163,7 @@ function SearchResultContent() {
     }
 
     return () => controller.abort()
-  }, [from, to, lat, lon, isNearbyMode, dayType, area])
+  }, [from, to, lat, lon, isNearbyMode, dayType, area, requestKey])
 
   const date = getDayTypeDate(dayType)
   const nowSec = (() => {
