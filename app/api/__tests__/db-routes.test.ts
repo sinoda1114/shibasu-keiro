@@ -14,8 +14,8 @@ import { GET as directRoutes } from '@/app/api/routes/direct/route'
 import { GET as timetable } from '@/app/api/timetable/route'
 
 // API ルートを実際の SQLite（マイグレーション適用済み）に対してモックなしで叩く。
-// 対象は /api/stops/search と /api/routes/direct。E2E は API を page.route でモックしているため、
-// この 2 ルートのクエリはここで守る。nearby / timetable / trip-stops / admin は未検証のまま。
+// 対象は /api/stops/search・/api/routes/direct・/api/timetable。E2E は API を page.route でモックしているため、
+// これらのクエリはここで守る。nearby / trip-stops / admin は未検証のまま。
 
 const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'
@@ -177,8 +177,10 @@ describe('/api/timetable（実 DB）', () => {
     expect(status).toBe(400)
   })
 
-  it('正しい dayType なら 200', async () => {
-    const { status } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
+  it('正しい dayType なら、その曜日区分の便を返す', async () => {
+    const { status, body } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
     expect(status).toBe(200)
+    // 横浜駅前の平日ダイヤは T1（8:00）だけ。休日ダイヤの T2（9:00）は含まない
+    expect(body.data).toEqual([expect.objectContaining({ entries: [{ hour: 8, minutes: [0] }] })])
   })
 })

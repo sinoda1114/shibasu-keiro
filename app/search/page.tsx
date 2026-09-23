@@ -25,7 +25,7 @@ import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
 import type { NearbyStop } from '@/app/api/routes/nearby/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getJstSecondsOfDay, getServiceDate, isDayType } from '@/lib/jst'
+import { getJstSecondsOfDay, getServiceDate, isDayType, type DayType } from '@/lib/jst'
 
 interface DirectRouteResult {
   tripId: string
@@ -47,10 +47,6 @@ const DAY_TYPE_LABELS: Record<string, string> = {
   holiday: '休日',
 }
 
-// URL の dayType が未知の値なら平日として扱う
-function serviceDateOf(dayType: string): string {
-  return getServiceDate(isDayType(dayType) ? dayType : 'weekday')
-}
 
 function timeToSeconds(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -83,7 +79,9 @@ function SearchResultContent() {
   const lat = searchParams.get('lat')
   const lon = searchParams.get('lon')
   const isNearbyMode = !!(lat && lon)
-  const dayType = searchParams.get('dayType') ?? 'weekday'
+  // 未知の値は平日として扱う。検索に使う日付とバッジの表示を同じ値で揃える
+  const rawDayType = searchParams.get('dayType')
+  const dayType: DayType = isDayType(rawDayType) ? rawDayType : 'weekday'
   const time = searchParams.get('time') ?? ''
   const timeMode = searchParams.get('timeMode') ?? 'now'
   const area = searchParams.get('area') ?? 'nagoya'
@@ -114,7 +112,7 @@ function SearchResultContent() {
   const setIsFavorited = (value: boolean) => setFavoritedOverride({ key: favoriteKey, value })
 
   useEffect(() => {
-    const date = serviceDateOf(dayType)
+    const date = getServiceDate(dayType)
     const controller = new AbortController()
     const settle = (partial: Partial<Omit<SearchResponse, 'key'>>) => {
       if (controller.signal.aborted) return
@@ -151,7 +149,7 @@ function SearchResultContent() {
     return () => controller.abort()
   }, [from, to, lat, lon, isNearbyMode, dayType, area, requestKey])
 
-  const date = serviceDateOf(dayType)
+  const date = getServiceDate(dayType)
   const nowSec = getJstSecondsOfDay()
 
   const timeSeconds = timeToSeconds(time || '00:00')
@@ -213,7 +211,7 @@ function SearchResultContent() {
           </Group>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
-              {DAY_TYPE_LABELS[dayType] ?? dayType}
+              {DAY_TYPE_LABELS[dayType]}
             </Badge>
             {time && (
               <Badge variant="light" color="gray" size="sm" radius="sm">
