@@ -2,8 +2,10 @@ import { defineConfig, devices } from '@playwright/test'
 import { isolatedDatabaseUrl } from './e2e/database-url'
 
 // 開発用の pnpm dev（3000 番、.env.local の DB に接続）とは別のポートで毎回起動する。
-// 既存サーバーを再利用すると webServer.env が届かず、E2E が .env.local の DB を見てしまうため
-const E2E_PORT = 3100
+// 既存サーバーを再利用すると webServer.env が届かず、E2E が .env.local の DB を見てしまうため。
+// 同じ worktree で pnpm dev が動いていると .next を取り合って起動できないので、止めてから実行する。
+// E2E_PORT は worktree を並行させるときの上書き用
+const E2E_PORT = Number(process.env.E2E_PORT ?? 3100)
 
 export default defineConfig({
   testDir: './e2e',
