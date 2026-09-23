@@ -16,6 +16,23 @@ function collectHydrationErrors(page: Page): string[] {
   return errors
 }
 
+type DayType = 'weekday' | 'saturday' | 'holiday'
+
+function dayTypeOf(date: Date): DayType {
+  const day = date.getDay()
+  if (day === 0) return 'holiday'
+  if (day === 6) return 'saturday'
+  return 'weekday'
+}
+
+// サーバーと時刻も曜日区分も食い違う日時。テストランナーと dev サーバーは同じマシンで動く
+function clockSkewedFromServer(): Date {
+  const serverNow = new Date()
+  const skewed = new Date(serverNow.getTime() + (3 * 60 + 17) * 60 * 1000)
+  while (dayTypeOf(skewed) === dayTypeOf(serverNow)) skewed.setDate(skewed.getDate() + 1)
+  return skewed
+}
+
 test.describe('ハイドレーション不一致', () => {
   test('検索履歴が入った状態でトップページを開いても不一致が起きない', async ({ page }) => {
     const errors = collectHydrationErrors(page)
@@ -49,5 +66,40 @@ test.describe('ハイドレーション不一致', () => {
 
     await expect(page.getByRole('radio', { name: '横浜' })).toBeChecked()
     expect(errors).toEqual([])
+  })
+
+  test('ブラウザの時計がサーバーとずれていても不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+    const browserNow = clockSkewedFromServer()
+    await page.clock.setFixedTime(browserNow)
+
+    await page.goto('/?area=nagoya')
+
+    const hh = String(browserNow.getHours()).padStart(2, '0')
+    const mm = String(browserNow.getMinutes()).padStart(2, '0')
+    await expect(page.getByRole('button', { name: `${hh}:${mm}` })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('localStorage が遮断された環境でもトップページが表示される', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError')
+        },
+      })
+    })
+
+    await page.goto('/')
+
+    // 検索モードの切り替えはハイドレーション後にしか効かない。効いたら描画を最後まで終えている
+    await expect(async () => {
+      await page.getByText('📍 近くから探す').click()
+      await expect(page.getByRole('button', { name: '現在地から検索' })).toBeVisible({ timeout: 500 })
+    }).toPass({ timeout: 10_000 })
+    expect(pageErrors).toEqual([])
   })
 })
