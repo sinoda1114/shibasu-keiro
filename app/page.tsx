@@ -26,6 +26,7 @@ import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/l
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
+import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
@@ -45,23 +46,6 @@ function getNowTime(): string {
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')
   return `${hh}:${mm}`
-}
-
-// ストレージが遮断された環境（Safari の Cookie 全遮断など）では localStorage への参照自体が SecurityError を投げる
-function readLocalStorage(key: string): string | null {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-function writeLocalStorage(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value)
-  } catch {
-    // 保存できなくても操作自体は続ける
-  }
 }
 
 async function fetchStopSuggestions(query: string, area: string): Promise<string[]> {

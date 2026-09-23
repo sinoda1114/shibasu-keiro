@@ -18,6 +18,7 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin, IconExternalLink } from '@tabler/icons-react'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
+import { notifyFavoriteUnsaved } from '@/components/favorites/notify-favorite-unsaved'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
@@ -198,8 +199,9 @@ function SearchResultContent() {
                 onClick={() => {
                   if (isFavorited) {
                     const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
-                    if (target) removeFavorite(target.id)
-                    setIsFavorited(false)
+                    const removed = target ? removeFavorite(target.id) : true
+                    if (removed) setIsFavorited(false)
+                    else notifyFavoriteUnsaved()
                   } else {
                     const providerCounts = new Map<string, number>()
                     for (const r of results) {
@@ -207,8 +209,8 @@ function SearchResultContent() {
                     }
                     const topProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
                     const providerLabel = topProvider ?? areaConfig.providerDisplayNames[0]
-                    addFavorite(from, to, area, providerLabel)
-                    setIsFavorited(true)
+                    if (addFavorite(from, to, area, providerLabel)) setIsFavorited(true)
+                    else notifyFavoriteUnsaved()
                   }
                 }}
                 style={{ flexShrink: 0 }}

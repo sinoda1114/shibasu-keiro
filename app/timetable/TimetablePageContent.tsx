@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { TimetableController } from '@/components/timetable/TimetableController'
 import { LAST_FROM_STOP_KEY } from '@/lib/storage-keys'
+import { readLocalStorage } from '@/lib/safe-storage'
 
 export function TimetablePageContent() {
   const searchParams = useSearchParams()
@@ -13,7 +14,7 @@ export function TimetablePageContent() {
       window.addEventListener('storage', callback)
       return () => window.removeEventListener('storage', callback)
     },
-    () => localStorage.getItem(LAST_FROM_STOP_KEY),
+    () => readLocalStorage(LAST_FROM_STOP_KEY),
     () => null,
   )
   const stopName = fromParam ?? savedStop ?? '栄'

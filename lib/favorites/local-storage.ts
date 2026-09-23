@@ -1,3 +1,5 @@
+import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
+
 export interface FavoriteRoute {
   id: string
   areaId: string
@@ -20,9 +22,9 @@ function migrateProviderName(name: string): string {
 
 export function getFavorites(): FavoriteRoute[] {
   if (typeof window === 'undefined') return []
+  const raw = readLocalStorage(STORAGE_KEY)
+  if (!raw) return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     const favorites = parsed as FavoriteRoute[]
@@ -30,13 +32,8 @@ export function getFavorites(): FavoriteRoute[] {
       const name = migrateProviderName(f.providerDisplayName)
       return name !== f.providerDisplayName ? { ...f, providerDisplayName: name } : f
     })
-    if (migrated.some((f, i) => f !== favorites[i])) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
-      } catch {
-        // 書き戻し失敗（容量制限等）でも読み取り結果は返す
-      }
-    }
+    // 書き戻しに失敗（容量制限等）しても読み取り結果は返す
+    if (migrated.some((f, i) => f !== favorites[i])) writeLocalStorage(STORAGE_KEY, JSON.stringify(migrated))
     return migrated
   } catch {
     return []
@@ -48,7 +45,7 @@ export function addFavorite(
   to: string,
   areaId: string,
   providerDisplayName: string
-): FavoriteRoute {
+): FavoriteRoute | null {
   const favorites = getFavorites()
   const newItem: FavoriteRoute = {
     id: generateId(),
@@ -59,21 +56,20 @@ export function addFavorite(
     createdAt: new Date().toISOString(),
   }
   const updated = [newItem, ...favorites]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-  return newItem
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated)) ? newItem : null
 }
 
-export function removeFavorite(id: string): void {
+export function removeFavorite(id: string): boolean {
   const favorites = getFavorites()
   const updated = favorites.filter((f) => f.id !== id)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated))
 }
 
-export function reverseFavorite(id: string): void {
+export function reverseFavorite(id: string): boolean {
   const favorites = getFavorites()
   const updated = favorites.map((f) => {
     if (f.id !== id) return f
     return { ...f, fromStopName: f.toStopName, toStopName: f.fromStopName }
   })
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated))
 }
