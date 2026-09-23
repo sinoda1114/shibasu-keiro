@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { busStops, busStopTimes } from '@/lib/db/schema'
 import {
   getActiveVersionId,
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       stopName: busStops.stopName,
       arrivalTimeSeconds: busStopTimes.arrivalTimeSeconds,

@@ -10,7 +10,7 @@ const mockDb = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../lib/db/client', () => ({
-  db: mockDb,
+  getDb: () => mockDb,
 }))
 
 import { isOdptFilesUrl, resolveOdptUrl } from '../utils'

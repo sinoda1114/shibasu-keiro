@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import {
   providers,
   gtfsVersions,
@@ -43,7 +43,7 @@ async function batchInsert<T extends object>(
     let lastErr: unknown
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        await db.insert(table).values(batch)
+        await getDb().insert(table).values(batch)
         lastErr = null
         break
       } catch (err) {
@@ -78,7 +78,7 @@ export async function checkOdptUpdate(
   const dcDate = await fetchLatestDcDate(consumerKey)
   const newHash = `odpt:sotetsu:${dcDate ?? new Date().toISOString().split('T')[0]}`
 
-  const latest = await db
+  const latest = await getDb()
     .select({ sourceHash: gtfsVersions.sourceHash })
     .from(gtfsVersions)
     .where(
@@ -101,13 +101,13 @@ export async function importOdpt(consumerKey: string, sourceHash: string): Promi
   const versionName = now.split('T')[0]
 
   // providers テーブルにプロバイダーが存在しなければ挿入
-  const existing = await db
+  const existing = await getDb()
     .select()
     .from(providers)
     .where(eq(providers.id, PROVIDER_ID))
     .limit(1)
   if (existing.length === 0) {
-    await db.insert(providers).values({
+    await getDb().insert(providers).values({
       id: PROVIDER_ID,
       name: PROVIDER_ID,
       displayName: DISPLAY_NAME,
@@ -120,7 +120,7 @@ export async function importOdpt(consumerKey: string, sourceHash: string): Promi
     console.log(`Inserted provider: ${PROVIDER_ID}`)
   }
 
-  await db.insert(gtfsImportJobs).values({
+  await getDb().insert(gtfsImportJobs).values({
     id: jobId,
     providerId: PROVIDER_ID,
     gtfsVersionId: versionId,
@@ -131,7 +131,7 @@ export async function importOdpt(consumerKey: string, sourceHash: string): Promi
   })
 
   try {
-    await db.insert(gtfsVersions).values({
+    await getDb().insert(gtfsVersions).values({
       id: versionId,
       providerId: PROVIDER_ID,
       versionName,
@@ -275,7 +275,7 @@ export async function importOdpt(consumerKey: string, sourceHash: string): Promi
     ])
     console.log('  ✓ 3 calendar entries (weekday / saturday / holiday)')
 
-    await db
+    await getDb()
       .update(gtfsImportJobs)
       .set({ status: 'completed', finishedAt: new Date().toISOString() })
       .where(eq(gtfsImportJobs.id, jobId))
@@ -284,18 +284,18 @@ export async function importOdpt(consumerKey: string, sourceHash: string): Promi
     return versionId
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db
+    await getDb()
       .update(gtfsImportJobs)
       .set({ status: 'failed', finishedAt: new Date().toISOString(), errorMessage: msg })
       .where(eq(gtfsImportJobs.id, jobId))
 
     try {
-      await db.delete(busStopTimes).where(eq(busStopTimes.gtfsVersionId, versionId))
-      await db.delete(busTrips).where(eq(busTrips.gtfsVersionId, versionId))
-      await db.delete(busRoutes).where(eq(busRoutes.gtfsVersionId, versionId))
-      await db.delete(busStops).where(eq(busStops.gtfsVersionId, versionId))
-      await db.delete(gtfsCalendar).where(eq(gtfsCalendar.gtfsVersionId, versionId))
-      await db.delete(gtfsVersions).where(eq(gtfsVersions.id, versionId))
+      await getDb().delete(busStopTimes).where(eq(busStopTimes.gtfsVersionId, versionId))
+      await getDb().delete(busTrips).where(eq(busTrips.gtfsVersionId, versionId))
+      await getDb().delete(busRoutes).where(eq(busRoutes.gtfsVersionId, versionId))
+      await getDb().delete(busStops).where(eq(busStops.gtfsVersionId, versionId))
+      await getDb().delete(gtfsCalendar).where(eq(gtfsCalendar.gtfsVersionId, versionId))
+      await getDb().delete(gtfsVersions).where(eq(gtfsVersions.id, versionId))
     } catch (cleanupErr) {
       console.error('クリーンアップ中にエラーが発生しました:', cleanupErr)
     }

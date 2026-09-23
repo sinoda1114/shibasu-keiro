@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, inArray, lt, isNotNull } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { busRoutes, busStops, busStopTimes, busTrips } from '@/lib/db/schema'
 import {
   getActiveVersionId,
@@ -38,7 +38,7 @@ async function queryOneProvider(
   if (serviceIds.length === 0) return []
 
   const [fromStops, toStops] = await Promise.all([
-    db
+    getDb()
       .select({ stopId: busStops.stopId })
       .from(busStops)
       .where(and(
@@ -46,7 +46,7 @@ async function queryOneProvider(
         eq(busStops.gtfsVersionId, versionId),
         eq(busStops.stopName, fromName)
       )),
-    db
+    getDb()
       .select({ stopId: busStops.stopId })
       .from(busStops)
       .where(and(
@@ -66,7 +66,7 @@ async function queryOneProvider(
   const tripsAlias = alias(busTrips, 't')
   const routesAlias = alias(busRoutes, 'r')
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       tripId: fromSt.tripId,
       routeId: tripsAlias.routeId,
@@ -140,9 +140,9 @@ async function checkSotetsuStopsExist(fromName: string, toName: string): Promise
   const versionId = await getActiveVersionId('sotetsu_bus')
   if (!versionId) return false
   const [fromStops, toStops] = await Promise.all([
-    db.select({ stopId: busStops.stopId }).from(busStops)
+    getDb().select({ stopId: busStops.stopId }).from(busStops)
       .where(and(eq(busStops.providerId, 'sotetsu_bus'), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, fromName))),
-    db.select({ stopId: busStops.stopId }).from(busStops)
+    getDb().select({ stopId: busStops.stopId }).from(busStops)
       .where(and(eq(busStops.providerId, 'sotetsu_bus'), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, toName))),
   ])
   return fromStops.length > 0 && toStops.length > 0

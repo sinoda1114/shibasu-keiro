@@ -24,7 +24,7 @@ vi.mock('@/lib/db/client', () => {
     orderBy: () => chain,
     limit: async () => [leakedRow],
   }
-  return { db: chain }
+  return { getDb: () => chain }
 })
 
 describe('GET /api/admin/jobs', () => {

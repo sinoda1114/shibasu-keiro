@@ -1,9 +1,16 @@
-import { createClient } from '@libsql/client'
-import { drizzle } from 'drizzle-orm/libsql'
+import { createClient, type Client } from '@libsql/client'
+import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql'
 
-const url = process.env.TURSO_DATABASE_URL ?? 'file:.data/local.db'
-const authToken = process.env.TURSO_AUTH_TOKEN
+type Db = LibSQLDatabase & { $client: Client }
 
-const client = createClient({ url, authToken })
+let db: Db | undefined
 
-export const db = drizzle(client)
+// モジュールの読み込み時には接続しない。next build のページデータ収集は全ルートを import するため、
+// 読み込み時に接続すると DB の無い環境（CI のビルド等）で SQLITE_CANTOPEN になって落ちる。
+export function getDb(): Db {
+  db ??= drizzle(createClient({
+    url: process.env.TURSO_DATABASE_URL ?? 'file:.data/local.db',
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  }))
+  return db
+}

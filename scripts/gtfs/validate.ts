@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import { busStops, busStopTimes } from '../../lib/db/schema'
 
 /**
@@ -7,7 +7,7 @@ import { busStops, busStopTimes } from '../../lib/db/schema'
  */
 export async function validateImport(gtfsVersionId: string): Promise<boolean> {
   // stops 存在確認
-  const stops = await db
+  const stops = await getDb()
     .select()
     .from(busStops)
     .where(eq(busStops.gtfsVersionId, gtfsVersionId))
@@ -19,7 +19,7 @@ export async function validateImport(gtfsVersionId: string): Promise<boolean> {
   }
 
   // stop_times 存在確認
-  const stopTimes = await db
+  const stopTimes = await getDb()
     .select()
     .from(busStopTimes)
     .where(eq(busStopTimes.gtfsVersionId, gtfsVersionId))
