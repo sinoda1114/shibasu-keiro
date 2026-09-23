@@ -1,4 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
+import { isolatedDatabaseUrl } from './e2e/database-url'
+
+// 開発用の pnpm dev（3000 番、.env.local の DB に接続）とは別のポートで毎回起動する。
+// 既存サーバーを再利用すると webServer.env が届かず、E2E が .env.local の DB を見てしまうため。
+// 同じ worktree で pnpm dev が動いていると .next を取り合って起動できないので、止めてから実行する。
+// E2E_PORT は worktree を並行させるときの上書き用
+const E2E_PORT = Number(process.env.E2E_PORT || 3100)
+if (!Number.isInteger(E2E_PORT) || E2E_PORT <= 0 || E2E_PORT > 65535) {
+  throw new Error(`E2E_PORT は 1〜65535 の整数で指定してください（受け取った値: ${process.env.E2E_PORT}）`)
+}
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,7 +18,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${E2E_PORT}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,21 +28,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm dev --port ${E2E_PORT}`,
+    url: `http://localhost:${E2E_PORT}`,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      // file::memory: はプロセスごとに別の DB になるため、db:migrate を適用した
-      // プロセスとこの dev サーバーが別々の空 DB を見て "no such table" で落ちる。
-      // CI では .github/ci.env の file:ci.db を共有する。
-      //
-      // 外部の TURSO_DATABASE_URL を尊重するのは CI に限る。ローカルは常に隔離する。
-      // direnv 等で本番 Turso の URL を export している手元だと、
-      // 無条件に尊重すると E2E が本番 DB に接続してしまうため。
-      TURSO_DATABASE_URL: process.env.CI
-        ? (process.env.TURSO_DATABASE_URL ?? 'file:ci.db')
-        : 'file::memory:',
+      // CI は .github/ci.env の file:ci.db を db:migrate と共有する（file::memory: はプロセスごとに別の DB）
+      TURSO_DATABASE_URL: isolatedDatabaseUrl(process.env.TURSO_DATABASE_URL),
+      TURSO_AUTH_TOKEN: '',
     },
   },
 })

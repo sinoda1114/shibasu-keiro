@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { gtfsImportJobs } from '@/lib/db/schema'
+import { redactUrl } from '@/lib/redact-url'
 
 export interface ImportJob {
   id: string
@@ -34,7 +35,8 @@ export async function GET(req: NextRequest) {
     startedAt: r.startedAt,
     finishedAt: r.finishedAt,
     errorMessage: r.errorMessage,
-    sourceUrl: r.sourceUrl,
+    // 保存済みの行に API キー入り URL が残っているため、読み出し側で必ず伏せる
+    sourceUrl: redactUrl(r.sourceUrl),
     sourceHash: r.sourceHash,
     createdAt: r.createdAt,
   }))
