@@ -5,15 +5,8 @@ const { createClient } = vi.hoisted(() => ({ createClient: vi.fn(() => ({})) }))
 vi.mock('@libsql/client', () => ({ createClient }))
 vi.mock('drizzle-orm/libsql', () => ({ drizzle: vi.fn((client: unknown) => ({ client })) }))
 
-const ROUTES = [
-  '@/app/api/admin/jobs/route',
-  '@/app/api/admin/versions/route',
-  '@/app/api/routes/direct/route',
-  '@/app/api/routes/nearby/route',
-  '@/app/api/routes/trip-stops/route',
-  '@/app/api/stops/search/route',
-  '@/app/api/timetable/route',
-]
+// 新しいルートを足したときに検査から漏れないよう、一覧を手で持たず集める
+const ROUTES = import.meta.glob('/app/api/**/route.ts')
 
 beforeEach(() => {
   vi.resetModules()
@@ -22,7 +15,9 @@ beforeEach(() => {
 
 describe('lib/db/client', () => {
   it('ルートを import しただけでは DB に接続しない（next build のページデータ収集と同じ条件）', async () => {
-    for (const route of ROUTES) await import(route)
+    const loaders = Object.values(ROUTES)
+    expect(loaders.length).toBeGreaterThanOrEqual(7)
+    for (const load of loaders) await load()
     expect(createClient).not.toHaveBeenCalled()
   })
 

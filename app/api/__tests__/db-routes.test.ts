@@ -83,6 +83,7 @@ beforeAll(async () => {
 })
 
 afterAll(() => {
+  getDb().$client.close()
   rmSync(dir, { recursive: true, force: true })
 })
 
