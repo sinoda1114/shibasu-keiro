@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
+import { isolatedDatabaseUrl } from './e2e/database-url'
+
+// 開発用の pnpm dev（3000 番、.env.local の DB に接続）とは別のポートで毎回起動する。
+// 既存サーバーを再利用すると webServer.env が届かず、E2E が .env.local の DB を見てしまうため
+const E2E_PORT = 3100
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${E2E_PORT}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,19 +23,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm dev --port ${E2E_PORT}`,
+    url: `http://localhost:${E2E_PORT}`,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      // E2E の dev サーバーはリモート DB（本番 Turso）に接続しない。file: の URL だけを受け付け、
-      // それ以外（libsql:// / https:// / 未設定）は file::memory: に隔離する。CI 判定には頼らない
-      // （CI=false も文字列として真になる。本番の資格情報があるのはむしろ CI 側）。
-      // CI は .github/ci.env の file:ci.db を db:migrate と共有する。file::memory: はプロセスごとに
-      // 別の DB になるため、マイグレーションを当てたプロセスと共有できない。
-      TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL?.startsWith('file:')
-        ? process.env.TURSO_DATABASE_URL
-        : 'file::memory:',
+      // CI は .github/ci.env の file:ci.db を db:migrate と共有する（file::memory: はプロセスごとに別の DB）
+      TURSO_DATABASE_URL: isolatedDatabaseUrl(process.env.TURSO_DATABASE_URL),
+      TURSO_AUTH_TOKEN: '',
     },
   },
 })
