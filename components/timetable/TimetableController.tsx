@@ -6,7 +6,7 @@ import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
 import type { TimetableDirection } from '@/app/api/timetable/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getJstDayType, getJstTime, type DayType } from '@/lib/jst'
+import { getJstDayType, getJstTime, getServiceDate, type DayType } from '@/lib/jst'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
@@ -69,7 +69,8 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
   useEffect(() => {
     dispatch({ type: 'FETCH_START' })
 
-    const params = new URLSearchParams({ stopName, dayType, provider })
+    // 検索と同じく、選んだ曜日区分を日付に直して渡す（API は日付で運行日を引き、祝日・年末年始の例外を反映する）
+    const params = new URLSearchParams({ stopName, date: getServiceDate(dayType), provider })
     fetch(`/api/timetable?${params}`)
       .then((r) => r.json())
       .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {

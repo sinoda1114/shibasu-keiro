@@ -44,6 +44,16 @@ export function formatJstYYYYMMDD(now: Date = new Date()): string {
   return `${jst.getUTCFullYear()}${m}${d}`
 }
 
+/** URL のクエリなど外から来た値が YYYYMMDD の実在する日付か（20260230 のような存在しない日付は弾く） */
+export function isYYYYMMDD(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{8}$/.test(value)) return false
+  const y = Number(value.slice(0, 4))
+  const m = Number(value.slice(4, 6))
+  const d = Number(value.slice(6, 8))
+  const date = new Date(Date.UTC(y, m - 1, d))
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, getServiceDate, isDayType } from '../jst'
+import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, getServiceDate, isDayType, isYYYYMMDD } from '../jst'
 
 describe('getJstDayType', () => {
   it('UTC では金曜でも JST で土曜なら saturday', () => {
@@ -88,4 +88,12 @@ describe('formatJstYYYYMMDD', () => {
 describe('isDayType', () => {
   it.each(['weekday', 'saturday', 'holiday'])('%s は曜日区分', (v) => expect(isDayType(v)).toBe(true))
   it.each(['bogus', 'Weekday', '', null, undefined, 1])('%s は曜日区分でない', (v) => expect(isDayType(v)).toBe(false))
+})
+
+describe('isYYYYMMDD', () => {
+  it.each(['20260924', '20240229', '20261231'])('%s は日付', (v) => expect(isYYYYMMDD(v)).toBe(true))
+  it.each(['2026-09-24', '2026092', '202609240', '20260230', '20250229', '20261301', '20260000', '20260900', '', null, undefined, 20260924])(
+    '%s は日付でない（形式違い・存在しない日付）',
+    (v) => expect(isYYYYMMDD(v)).toBe(false),
+  )
 })

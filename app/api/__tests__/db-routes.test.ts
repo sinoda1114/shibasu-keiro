@@ -21,6 +21,7 @@ import { GET as timetable } from '@/app/api/timetable/route'
 const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'
 const SATURDAY = '20260926'
+const SUNDAY = '20260927'
 const SATURDAY_EXTRA = '20261003'
 const MONDAY_HOLIDAY = '20261012' // スポーツの日
 const TUESDAY_AFTER_HOLIDAY = '20261013'
@@ -182,17 +183,45 @@ describe('/api/routes/direct（実 DB）', () => {
 })
 
 describe('/api/timetable（実 DB）', () => {
-  it('dayType が未知の値なら 400（日曜ダイヤを黙って返さない）', async () => {
-    const { status } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=bogus&provider=yokohama_city_bus')
-    expect(status).toBe(400)
+  const url = (stopName: string, provider: string, date: string) =>
+    `/api/timetable?stopName=${stopName}&provider=${provider}&date=${date}`
+  const hours = (body: { data: { entries: { hour: number; minutes: number[] }[] }[] }) =>
+    body.data.flatMap((d) => d.entries)
+
+  it('date の曜日で運行する便を返す', async () => {
+    // 横浜駅前の平日ダイヤは T1（8:00）、日曜の列のダイヤは T3（10:00）
+    const weekday = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', THURSDAY))
+    expect(weekday.status).toBe(200)
+    expect(hours(weekday.body)).toEqual([{ hour: 8, minutes: [0] }])
+    const sunday = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', SUNDAY))
+    expect(hours(sunday.body)).toEqual([{ hour: 10, minutes: [0] }])
   })
 
-  it('正しい dayType なら、その曜日区分の便を返す', async () => {
-    // 横浜駅前の平日ダイヤは T1（8:00）、日曜の列のダイヤは T3（10:00）
-    const weekday = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
-    expect(weekday.status).toBe(200)
-    expect(weekday.body.data).toEqual([expect.objectContaining({ entries: [{ hour: 8, minutes: [0] }] })])
-    const holiday = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=holiday&provider=yokohama_city_bus')
-    expect(holiday.body.data).toEqual([expect.objectContaining({ entries: [{ hour: 10, minutes: [0] }] })])
+  it('calendar_dates の例外を反映する（平日の運休・土曜の臨時運行）', async () => {
+    const suspended = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', FRIDAY_SUSPENDED))
+    expect(suspended.status).toBe(200)
+    expect(suspended.body.data).toEqual([])
+    const extra = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', SATURDAY_EXTRA))
+    expect(hours(extra.body)).toEqual([{ hour: 8, minutes: [0] }])
   })
+
+  it('例外を持つ事業者（横浜市営バス）は、祝日を例外のとおりに判定する（日曜の列に無い休日ダイヤも出す）', async () => {
+    const { body } = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', MONDAY_HOLIDAY))
+    expect(hours(body)).toEqual([{ hour: 9, minutes: [0] }])
+  })
+
+  it('例外を持たない事業者（相鉄バス）は、平日の祝日を日曜のダイヤで扱う', async () => {
+    const holiday = await getJson(timetable, url('横浜駅西口', 'sotetsu_bus', MONDAY_HOLIDAY))
+    expect(hours(holiday.body)).toEqual([{ hour: 9, minutes: [10] }])
+    const nextDay = await getJson(timetable, url('横浜駅西口', 'sotetsu_bus', TUESDAY_AFTER_HOLIDAY))
+    expect(hours(nextDay.body)).toEqual([{ hour: 8, minutes: [10] }])
+  })
+
+  it.each(['2026-09-24', '2026092', 'bogus', '20260230', '20261301', '20260900'])(
+    'date が %s（YYYYMMDD でない・存在しない日付）なら 400',
+    async (date) => {
+      const { status } = await getJson(timetable, url('横浜駅前', 'yokohama_city_bus', date))
+      expect(status).toBe(400)
+    },
+  )
 })
