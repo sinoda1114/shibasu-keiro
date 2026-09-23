@@ -159,7 +159,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const fromName = searchParams.get('from')?.trim()
   const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? formatJstYYYYMMDD()
+  const dateParam = searchParams.get('date')
+  const dateStr = dateParam ?? formatJstYYYYMMDD()
   const areaId = searchParams.get('area') ?? 'nagoya'
 
   if (!fromName || !toName) {
@@ -195,8 +196,9 @@ export async function GET(req: NextRequest) {
     ? await checkSotetsuStopsExist(fromName, toName)
     : false
 
-  // 一部の事業者が欠けた結果は、データが戻った後も CDN に残り続けないようキャッシュしない
-  const cacheControl = missingProviders.length > 0
+  // 一部の事業者が欠けた結果は、データが戻った後も CDN に残り続けないようキャッシュしない。
+  // 日付なしの URL も、日付が変わると別の結果を指すので CDN に残さない
+  const cacheControl = missingProviders.length > 0 || dateParam === null
     ? 'no-store'
     : 's-maxage=3600, stale-while-revalidate=86400'
   const body: DirectRouteResponse = { success: true, data, date: dateStr, sotetsuStopsExist, missingProviders }

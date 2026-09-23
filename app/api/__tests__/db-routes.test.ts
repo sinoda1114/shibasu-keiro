@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { NextRequest } from 'next/server'
 import { migrate } from 'drizzle-orm/libsql/migrator'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { getDb } from '@/lib/db/client'
 import {
   busRoutes, busStopTimes, busStops, busTrips, gtfsCalendar, gtfsCalendarDates, gtfsVersions, providers,
@@ -88,6 +88,20 @@ async function seed() {
     { id: 'st5', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'W', arrivalTimeSeconds: hhmm(9, 10), departureTimeSeconds: hhmm(9, 10), stopSequence: 1, createdAt: NOW },
     { id: 'st6', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'U', arrivalTimeSeconds: hhmm(9, 40), departureTimeSeconds: hhmm(9, 40), stopSequence: 2, createdAt: NOW },
   ])
+}
+
+// libsql の非同期処理を止めないよう、偽装するのは Date だけにする
+function fixClock(iso: string) {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(iso))
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+async function getResponse(handler: (req: NextRequest) => Promise<Response>, url: string) {
+  return handler(new NextRequest(new URL(url, 'http://localhost')))
 }
 
 async function getJson(handler: (req: NextRequest) => Promise<Response>, url: string) {
@@ -176,6 +190,24 @@ describe('/api/routes/direct（実 DB）', () => {
     expect(body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['T1'])
   })
 
+  it('date を省略したら JST の今日で引く（UTC では 9/24 でも JST では運休の 9/25）', async () => {
+    fixClock('2026-09-24T15:30:00Z')
+    const { status, body } = await getJson(directRoutes, '/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama')
+    expect(status).toBe(200)
+    expect(body.date).toBe(FRIDAY_SUSPENDED)
+    expect(body.data).toEqual([])
+  })
+
+  it('date を省略した応答は CDN に残さない（日付が変わった後に前日の結果を返さない）', async () => {
+    const res = await getResponse(directRoutes, '/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama')
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('date を指定した応答はキャッシュさせる', async () => {
+    const res = await getResponse(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${THURSDAY}`)
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=')
+  })
+
   it('date が YYYYMMDD でなければ 400', async () => {
     const { status } = await getJson(directRoutes, '/api/routes/direct?from=a&to=b&area=yokohama&date=2026-09-24')
     expect(status).toBe(400)
@@ -215,6 +247,26 @@ describe('/api/timetable（実 DB）', () => {
     expect(hours(holiday.body)).toEqual([{ hour: 9, minutes: [10] }])
     const nextDay = await getJson(timetable, url('横浜駅西口', 'sotetsu_bus', TUESDAY_AFTER_HOLIDAY))
     expect(hours(nextDay.body)).toEqual([{ hour: 8, minutes: [10] }])
+  })
+
+  it('date を省略したら JST の今日で引く（UTC では 9/24 でも JST では運休の 9/25）', async () => {
+    fixClock('2026-09-24T15:30:00Z')
+    const { status, body } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&provider=yokohama_city_bus')
+    expect(status).toBe(200)
+    expect(body.data).toEqual([])
+  })
+
+  it('date を省略した応答は CDN に残さない（日付が変わった後に前日の時刻表を返さない）', async () => {
+    const res = await getResponse(timetable, '/api/timetable?stopName=横浜駅前&provider=yokohama_city_bus')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('date を指定した応答はキャッシュさせる（運行が無い日の空の応答も）', async () => {
+    const running = await getResponse(timetable, url('横浜駅前', 'yokohama_city_bus', THURSDAY))
+    expect(running.headers.get('Cache-Control')).toContain('s-maxage=')
+    const suspended = await getResponse(timetable, url('横浜駅前', 'yokohama_city_bus', FRIDAY_SUSPENDED))
+    expect(suspended.headers.get('Cache-Control')).toContain('s-maxage=')
   })
 
   it.each(['2026-09-24', '2026092', 'bogus', '20260230', '20261301', '20260900'])(

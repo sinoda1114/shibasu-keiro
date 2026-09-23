@@ -6,7 +6,7 @@ import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
 import type { TimetableDirection } from '@/app/api/timetable/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getJstDayType, getJstTime, getServiceDate, type DayType } from '@/lib/jst'
+import { formatServiceDateLabel, getJstDayType, getJstTime, getServiceDate, type DayType } from '@/lib/jst'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
@@ -21,6 +21,8 @@ interface TimetableControllerProps {
 }
 
 type FetchState = {
+  // API に渡した日付（YYYYMMDD）。表示もこの値から出し、引いた日付と食い違わないようにする
+  date: string | null
   loading: boolean
   error: string | null
   directions: TimetableDirection[]
@@ -28,12 +30,13 @@ type FetchState = {
 }
 
 type FetchAction =
-  | { type: 'FETCH_START' }
+  | { type: 'FETCH_START'; date: string }
   | { type: 'FETCH_SUCCESS'; directions: TimetableDirection[]; initialHeadsign?: string }
   | { type: 'FETCH_ERROR'; message: string }
   | { type: 'SET_DIRECTION'; index: string }
 
 const initialFetchState: FetchState = {
+  date: null,
   loading: true,
   error: null,
   directions: [],
@@ -43,12 +46,12 @@ const initialFetchState: FetchState = {
 function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   switch (action.type) {
     case 'FETCH_START':
-      return initialFetchState
+      return { ...initialFetchState, date: action.date }
     case 'FETCH_SUCCESS': {
       const matched = action.initialHeadsign
         ? action.directions.findIndex((d) => d.headsign === action.initialHeadsign)
         : -1
-      return { loading: false, error: null, directions: action.directions, directionIndex: matched >= 0 ? String(matched) : '0' }
+      return { ...state, loading: false, error: null, directions: action.directions, directionIndex: matched >= 0 ? String(matched) : '0' }
     }
     case 'FETCH_ERROR':
       return { ...state, loading: false, error: action.message }
@@ -61,16 +64,18 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
   const isHydrated = useIsHydrated()
   const [dayType, setDayType] = useState<DayType>(() => getJstDayType())
   const [currentTime] = useState(() => getJstTime())
-  const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
+  const [{ date, loading, error, directions, directionIndex }, dispatch] = useReducer(
     fetchReducer,
     initialFetchState,
   )
 
   useEffect(() => {
-    dispatch({ type: 'FETCH_START' })
+    // 検索と同じく、選んだ曜日区分を日付に直して渡す（API は日付で運行日を引き、祝日・年末年始の例外を反映する）。
+    // 今日の日付はサーバーとブラウザで食い違いうるので、描画中ではなくここで決める
+    const serviceDate = getServiceDate(dayType)
+    dispatch({ type: 'FETCH_START', date: serviceDate })
 
-    // 検索と同じく、選んだ曜日区分を日付に直して渡す（API は日付で運行日を引き、祝日・年末年始の例外を反映する）
-    const params = new URLSearchParams({ stopName, date: getServiceDate(dayType), provider })
+    const params = new URLSearchParams({ stopName, date: serviceDate, provider })
     fetch(`/api/timetable?${params}`)
       .then((r) => r.json())
       .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
@@ -88,6 +93,7 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
   const directionOptions = directions.map((d, i) => ({ label: d.headsign, value: String(i) }))
   const entries: TimetableEntry[] = selectedDirection?.entries ?? []
+  const dateLabel = date ? formatServiceDateLabel(date) : null
 
   return (
     <Stack gap="md">
@@ -103,6 +109,12 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
         onChange={(v) => setDayType(v as DayType)}
       />
 
+      {dateLabel && (
+        <Text size="sm" c="dimmed" ta="center">
+          {dateLabel}の運行
+        </Text>
+      )}
+
       {loading && (
         <Center py="xl">
           <Loader size="sm" />
@@ -117,7 +129,7 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
 
       {!loading && !error && directions.length === 0 && (
         <Text c="dimmed" size="sm" ta="center" py="xl">
-          この区分の時刻データがありません
+          {dateLabel ? `この日（${dateLabel}）は運行がありません` : 'この日は運行がありません'}
         </Text>
       )}
 

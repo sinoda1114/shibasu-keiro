@@ -54,6 +54,17 @@ export function isYYYYMMDD(value: unknown): value is string {
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
 }
 
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
+
+/** YYYYMMDD を画面に出す「10/13（火）」の形にする。祝日は「10/12（月・祝）」 */
+export function formatServiceDateLabel(dateStr: string): string {
+  const y = Number(dateStr.slice(0, 4))
+  const m = Number(dateStr.slice(4, 6))
+  const d = Number(dateStr.slice(6, 8))
+  const weekday = WEEKDAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return `${m}/${d}（${weekday}${isJpHoliday(y, m, d) ? '・祝' : ''}）`
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**

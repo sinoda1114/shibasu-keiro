@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, getServiceDate, isDayType, isYYYYMMDD } from '../jst'
+import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, formatServiceDateLabel, getServiceDate, isDayType, isYYYYMMDD } from '../jst'
 
 describe('getJstDayType', () => {
   it('UTC では金曜でも JST で土曜なら saturday', () => {
@@ -96,4 +96,17 @@ describe('isYYYYMMDD', () => {
     '%s は日付でない（形式違い・存在しない日付）',
     (v) => expect(isYYYYMMDD(v)).toBe(false),
   )
+})
+
+describe('formatServiceDateLabel（画面に出す対象日）', () => {
+  it('月/日（曜日）で返す', () => {
+    expect(formatServiceDateLabel('20261013')).toBe('10/13（火）')
+    expect(formatServiceDateLabel('20261018')).toBe('10/18（日）')
+    expect(formatServiceDateLabel('20270103')).toBe('1/3（日）')
+  })
+
+  it('祝日なら祝日と分かるように「・祝」を付ける', () => {
+    expect(formatServiceDateLabel('20261012')).toBe('10/12（月・祝）')
+    expect(formatServiceDateLabel('20260503')).toBe('5/3（日・祝）')
+  })
 })

@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const stopName = searchParams.get('stopName')?.trim()
   // 検索（/api/routes/direct）と同じく日付で運行日を引き、calendar_dates の例外（祝日・年末年始の運休や臨時便）を反映する
-  const dateStr = searchParams.get('date') ?? formatJstYYYYMMDD()
+  const dateParam = searchParams.get('date')
+  const dateStr = dateParam ?? formatJstYYYYMMDD()
+  // 日付なしの URL は日付が変わると別の時刻表を指すので、CDN に残さない
+  const cacheControl = dateParam === null ? 'no-store' : 's-maxage=3600, stale-while-revalidate=86400'
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   if (!stopName) {
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'バス停が見つかりません' }, { status: 404 })
   }
   if (serviceIds.length === 0) {
-    return NextResponse.json({ success: true, data: [] })
+    return NextResponse.json({ success: true, data: [] }, { headers: { 'Cache-Control': cacheControl } })
   }
 
   const stopIds = stops.map((s) => s.stopId)
@@ -107,6 +110,6 @@ export async function GET(req: NextRequest) {
   })
 
   return NextResponse.json({ success: true, data }, {
-    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+    headers: { 'Cache-Control': cacheControl },
   })
 }
