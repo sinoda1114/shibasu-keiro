@@ -22,6 +22,7 @@ const SATURDAY = '20260926'
 const SATURDAY_EXTRA = '20261003'
 const MONDAY_HOLIDAY = '20261012' // スポーツの日
 const TUESDAY_AFTER_HOLIDAY = '20261013'
+const TUESDAY_HOLIDAY_WITHOUT_EXCEPTION = '20261103' // 文化の日。この版はこの日の例外を持たない
 const NOW = '2026-01-01T00:00:00Z'
 
 let dir: string
@@ -50,6 +51,9 @@ async function seed() {
   await db.insert(gtfsCalendarDates).values([
     { id: 'cd1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', date: FRIDAY_SUSPENDED, exceptionType: 2 },
     { id: 'cd2', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', date: SATURDAY_EXTRA, exceptionType: 1 },
+    // 本番の GTFS と同じく、平日の祝日は平日ダイヤを外して休日ダイヤを足す例外で表す
+    { id: 'cd3', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', date: MONDAY_HOLIDAY, exceptionType: 2 },
+    { id: 'cd4', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'YHOL', date: MONDAY_HOLIDAY, exceptionType: 1 },
   ])
   await db.insert(busStops).values([
     { id: 's1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', stopId: 'A', stopName: '横浜駅前', createdAt: NOW },
@@ -63,12 +67,15 @@ async function seed() {
   ])
   await db.insert(busTrips).values([
     { id: 't1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', routeId: 'R1', serviceId: 'WD', tripHeadsign: '高島町', createdAt: NOW },
+    { id: 't4', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', routeId: 'R1', serviceId: 'YHOL', tripHeadsign: '高島町', createdAt: NOW },
     { id: 't2', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', routeId: 'RS', serviceId: 'WD', tripHeadsign: '梅の木', createdAt: NOW },
     { id: 't3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', routeId: 'RS', serviceId: 'HOL', tripHeadsign: '梅の木', createdAt: NOW },
   ])
   await db.insert(busStopTimes).values([
     { id: 'st1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', stopId: 'A', arrivalTimeSeconds: hhmm(8, 0), departureTimeSeconds: hhmm(8, 0), stopSequence: 1, createdAt: NOW },
     { id: 'st2', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', stopId: 'B', arrivalTimeSeconds: hhmm(8, 20), departureTimeSeconds: hhmm(8, 20), stopSequence: 2, createdAt: NOW },
+    { id: 'st7', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', stopId: 'A', arrivalTimeSeconds: hhmm(9, 0), departureTimeSeconds: hhmm(9, 0), stopSequence: 1, createdAt: NOW },
+    { id: 'st8', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', stopId: 'B', arrivalTimeSeconds: hhmm(9, 20), departureTimeSeconds: hhmm(9, 20), stopSequence: 2, createdAt: NOW },
     { id: 'st3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'W', arrivalTimeSeconds: hhmm(8, 10), departureTimeSeconds: hhmm(8, 10), stopSequence: 1, createdAt: NOW },
     { id: 'st4', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'U', arrivalTimeSeconds: hhmm(8, 40), departureTimeSeconds: hhmm(8, 40), stopSequence: 2, createdAt: NOW },
     { id: 'st5', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'W', arrivalTimeSeconds: hhmm(9, 10), departureTimeSeconds: hhmm(9, 10), stopSequence: 1, createdAt: NOW },
@@ -145,9 +152,15 @@ describe('/api/routes/direct（実 DB）', () => {
     expect(nextDay.body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['S1'])
   })
 
-  it('日付ごとの例外を持つ事業者（横浜市営バス）は、祝日もデータのとおりに判定する', async () => {
-    // この版は 2026-10-12 の例外を持たないので、月曜として平日ダイヤが走る
-    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${MONDAY_HOLIDAY}`)
+  it('日付ごとの例外を持つ事業者（横浜市営バス）は、祝日を例外のとおりに判定する', async () => {
+    const holiday = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${MONDAY_HOLIDAY}`)
+    expect(holiday.body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['T2'])
+    const nextDay = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${TUESDAY_AFTER_HOLIDAY}`)
+    expect(nextDay.body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['T1'])
+  })
+
+  it('例外を持つ事業者で、その祝日の例外が無ければ平日ダイヤのまま（祝日も平日ダイヤで走る日をデータで表す）', async () => {
+    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${TUESDAY_HOLIDAY_WITHOUT_EXCEPTION}`)
     expect(body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['T1'])
   })
 
