@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 const HISTORY_KEY = 'shibasu_keiro_search_history'
 const FAVORITES_KEY = 'shibasu_keiro_stop_favorites_v2'
 const LAST_AREA_KEY = 'shibasu_keiro_last_area'
+const ROUTE_FAVORITES_KEY = 'shibasu_keiro_favorites_v2'
 
 function collectHydrationErrors(page: Page): string[] {
   const errors: string[] = []
@@ -108,5 +109,39 @@ test.describe('ハイドレーション不一致', () => {
 
     await expect(page).toHaveURL(/\/search\?/)
     expect(pageErrors).toEqual([])
+  })
+
+  test('お気に入りルートが入った状態で /favorites を開いても不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+
+    await page.addInitScript((routeFavoritesKey) => {
+      localStorage.setItem(
+        routeFavoritesKey,
+        JSON.stringify([
+          {
+            id: 'hydration-1',
+            areaId: 'nagoya',
+            providerDisplayName: '名古屋市営バス',
+            fromStopName: '栄',
+            toStopName: '名古屋駅',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'hydration-2',
+            areaId: 'yokohama',
+            providerDisplayName: '横浜市営バス',
+            fromStopName: '横浜駅西口',
+            toStopName: '梅の木',
+            createdAt: '2024-01-02T00:00:00.000Z',
+          },
+        ])
+      )
+    }, ROUTE_FAVORITES_KEY)
+
+    await page.goto('/favorites')
+
+    await expect(page.getByText('2件のルート')).toBeVisible()
+    await expect(page.getByText('横浜駅西口')).toBeVisible()
+    expect(errors).toEqual([])
   })
 })
