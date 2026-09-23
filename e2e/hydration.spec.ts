@@ -79,6 +79,8 @@ test.describe('ハイドレーション不一致', () => {
     const hh = String(browserNow.getHours()).padStart(2, '0')
     const mm = String(browserNow.getMinutes()).padStart(2, '0')
     await expect(page.getByRole('button', { name: `${hh}:${mm}` })).toBeVisible()
+    const dayTypeLabel = { weekday: '平日', saturday: '土曜', holiday: '休日' }[dayTypeOf(browserNow)]
+    await expect(page.getByRole('radio', { name: dayTypeLabel })).toBeChecked()
     expect(errors).toEqual([])
   })
 
