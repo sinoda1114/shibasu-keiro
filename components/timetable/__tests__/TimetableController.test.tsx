@@ -57,7 +57,7 @@ describe('TimetableController の対象日の表示', () => {
     respond([])
     renderAt('2026-10-13T12:00:00+09:00')
 
-    expect(await screen.findByText('この日（10/13（火））は運行がありません')).toBeInTheDocument()
+    expect(await screen.findByText('10/13（火）は運行がありません')).toBeInTheDocument()
   })
 
   it('区分を変えると、その区分の代表日を出し、同じ日付で API を引き直す', async () => {
@@ -119,25 +119,74 @@ describe('TimetableController の応答の到着順', () => {
 })
 
 describe('TimetableController を開いたまま日付をまたぐ', () => {
-  it('JST の 0 時を過ぎたら、翌日の日付を出し、翌日の日付で API を引き直す', async () => {
-    respond([])
-    // タイマーも偽装し、時計を進めて 0 時をまたがせる
+  // タイマーも偽装し、時計を進めて 0 時をまたがせる
+  async function renderWithTimersAt(iso: string) {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
-    vi.setSystemTime(new Date('2026-10-13T23:59:00+09:00'))
+    vi.setSystemTime(new Date(iso))
     render(
       <MantineProvider>
         <TimetableController stopName="栄" provider="nagoya_city_bus" />
       </MantineProvider>,
     )
     await act(async () => {})
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms)
+    })
+  }
+
+  it('JST の 0 時を過ぎたら、翌日の日付を出し、翌日の日付で API を引き直す（翌日の便を過去扱いしない）', async () => {
+    respond([{ headsign: '名古屋駅', entries: [{ hour: 6, minutes: [30] }], lastDeparture: { hour: 6, minute: 30 } }])
+    await renderWithTimersAt('2026-10-13T23:59:00+09:00')
     expect(screen.getByText('10/13（火）の運行')).toBeInTheDocument()
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2 * 60 * 1000)
-    })
+    await advance(2 * 60 * 1000)
 
     expect(screen.getByText('10/14（水）の運行')).toBeInTheDocument()
     expect(requestedDates()).toEqual(['20261013', '20261014'])
+    // 現在時刻も 0:01 に進むので、6:30 は過去ではなく次の便として強調される
+    expect(screen.getByText('30').closest('.mantine-Badge-root')).not.toBeNull()
+  })
+
+  it('タイマーが 0 時の直前に発火しても、張り直して 0 時に翌日へ切り替える', async () => {
+    respond([])
+    await renderWithTimersAt('2026-10-13T23:59:00+09:00')
+    // 0 時の直前にタイマーが発火した状況を作る（時計だけ 1 秒戻す）
+    await advance(59 * 1000)
+    vi.setSystemTime(new Date('2026-10-13T23:59:58+09:00'))
+    await advance(1000)
+    expect(screen.getByText('10/13（火）の運行')).toBeInTheDocument()
+
+    await advance(5 * 1000)
+
+    expect(screen.getByText('10/14（水）の運行')).toBeInTheDocument()
+  })
+
+  it('区分を自分で選んでいなければ、日付をまたいだら今日の区分を選び直す（金曜 → 土曜）', async () => {
+    respond([])
+    await renderWithTimersAt('2026-10-16T23:59:00+09:00')
+    expect(screen.getByRole('radio', { name: '平日' })).toBeChecked()
+
+    await advance(2 * 60 * 1000)
+
+    expect(screen.getByRole('radio', { name: '土曜' })).toBeChecked()
+    expect(screen.getByText('10/17（土）の運行')).toBeInTheDocument()
+    expect(requestedDates()).toEqual(['20261016', '20261017'])
+  })
+
+  it('区分を自分で選んでいたら、日付をまたいでもその区分のまま', async () => {
+    respond([])
+    await renderWithTimersAt('2026-10-16T23:59:00+09:00')
+    fireEvent.click(screen.getByText('休日'))
+    await act(async () => {})
+    expect(screen.getByText('10/18（日）の運行')).toBeInTheDocument()
+
+    await advance(2 * 60 * 1000)
+
+    expect(screen.getByRole('radio', { name: '休日' })).toBeChecked()
+    expect(screen.getByText('10/18（日）の運行')).toBeInTheDocument()
   })
 
   it('タブが再び表示されたとき日付が変わっていたら、翌日の日付で引き直す（同じ日なら引き直さない）', async () => {
