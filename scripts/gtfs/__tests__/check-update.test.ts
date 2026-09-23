@@ -69,11 +69,30 @@ describe('resolveOdptUrl', () => {
     expect(result?.date).toMatch(/^\d{8}$/)
   })
 
-  it('ODPT が 403 を返したら、キーが原因と分かる文言で止まり、キーの値は含めないこと', async () => {
+  const TOKEN_URL = 'https://api.odpt.org/api/v4/files/odpt/YokohamaMunicipal/Bus.zip?acl:consumerKey=SECRET_TEST_TOKEN'
+
+  it('どの月も 403 なら、キーが原因と分かる文言で止まり、キーの値は含めないこと（CI では GitHub の Secret を案内）', async () => {
+    vi.stubEnv('GITHUB_ACTIONS', 'true')
     vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
-    const run = resolveOdptUrl('https://api.odpt.org/api/v4/files/odpt/YokohamaMunicipal/Bus.zip?acl:consumerKey=SECRET_TEST_TOKEN')
-    await expect(run).rejects.toThrow(/認証エラー（HTTP 403）[\s\S]*YOKOHAMA_GTFS_URL/)
-    await expect(run).rejects.not.toThrow(/SECRET_TEST_TOKEN/)
+    const error = await resolveOdptUrl(TOKEN_URL).catch((e: Error) => e)
+    expect(String(error)).toMatch(/認証エラー（HTTP 403）[\s\S]*GitHub の Secret YOKOHAMA_GTFS_URL/)
+    expect(String(error)).not.toMatch(/SECRET_TEST_TOKEN/)
+    vi.unstubAllEnvs()
+  })
+
+  it('手元で実行したときは .env.local を案内すること', async () => {
+    vi.stubEnv('GITHUB_ACTIONS', '')
+    vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).rejects.toThrow(/\.env\.local の YOKOHAMA_GTFS_URL/)
+    vi.unstubAllEnvs()
+  })
+
+  it('ある月が 403 でも、さかのぼった月で 302 が返れば取得できること', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 403, headers: new Headers() } as unknown as Response)
+      .mockResolvedValueOnce({ status: 302, headers: new Headers({ location: 'https://blob.example.com/b.zip' }) } as unknown as Response)
+    const result = await resolveOdptUrl(TOKEN_URL)
+    expect(result?.blobUrl).toBe('https://blob.example.com/b.zip')
   })
 
   it('6ヶ月分すべて 302 でなければ null を返すこと', async () => {
