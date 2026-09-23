@@ -13,3 +13,11 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "deps"
+    groups:
+      # @mantine/* はメジャー版を揃えないと動かないので、まとめて 1 本の PR にする
+      mantine:
+        patterns: ["@mantine/*"]
+    ignore:
+      # 型定義は実行環境の Node に合わせて手で上げる（今は 20 系で、CI の Node 22 より古い）
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
