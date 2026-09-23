@@ -8,7 +8,7 @@ import {
   resolveServiceIds,
   secondsToHHMM,
 } from '@/lib/gtfs/service-resolver'
-import { getAreaConfig } from '@/lib/providers/providers'
+import { getAreaConfig, providerIdToDisplayName } from '@/lib/providers/providers'
 import { formatJstYYYYMMDD } from '@/lib/jst'
 import { collectProviderResults } from '@/app/api/routes/provider-results'
 
@@ -174,11 +174,7 @@ async function queryOneProvider(
     )
     .orderBy(fromSt.departureTimeSeconds)
 
-  const providerDisplayName =
-    providerId === 'nagoya_city_bus' ? '名古屋市バス'
-    : providerId === 'yokohama_city_bus' ? '横浜市営バス'
-    : providerId === 'sotetsu_bus' ? '相鉄バス'
-    : providerId
+  const providerDisplayName = providerIdToDisplayName(providerId)
 
   const stopIdToName = new Map(nearbyStops.map((s) => [s.stopId, s.stopName]))
   const tripsByStopName = new Map<string, NearbyTrip[]>()
