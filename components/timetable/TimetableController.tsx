@@ -6,7 +6,15 @@ import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
 import type { TimetableDirection } from '@/app/api/timetable/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { formatServiceDateLabel, getJstDayType, getJstTime, getServiceDate, type DayType } from '@/lib/jst'
+import {
+  formatJstYYYYMMDD,
+  formatServiceDateLabel,
+  getJstDayType,
+  getJstTime,
+  getServiceDate,
+  msUntilNextJstDate,
+  type DayType,
+} from '@/lib/jst'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
@@ -64,10 +72,28 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
   const isHydrated = useIsHydrated()
   const [dayType, setDayType] = useState<DayType>(() => getJstDayType())
   const [currentTime] = useState(() => getJstTime())
+  // 今日（JST）。描画には使わず、日付が変わったら下の取得をやり直すきっかけにする
+  const [today, setToday] = useState(() => formatJstYYYYMMDD())
   const [{ date, loading, error, directions, directionIndex }, dispatch] = useReducer(
     fetchReducer,
     initialFetchState,
   )
+
+  // ページを開いたまま日付をまたいだら、今日を更新して翌日の日付で引き直す。
+  // 0 時のタイマーに加え、バックグラウンドでタイマーが止まる端末のためにタブが再び表示されたときも確かめる。
+  // 同じ日付を入れても state は変わらないので、二重に取得しない
+  useEffect(() => {
+    const sync = () => setToday(formatJstYYYYMMDD())
+    const timer = setTimeout(sync, msUntilNextJstDate())
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') sync()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [today])
 
   useEffect(() => {
     // 検索と同じく、選んだ曜日区分を日付に直して渡す（API は日付で運行日を引き、祝日・年末年始の例外を反映する）。
@@ -94,7 +120,8 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
         })
       })
     return () => controller.abort()
-  }, [stopName, dayType, provider])
+    // today は日付をまたいだら getServiceDate を計算し直すためだけに依存に入れる
+  }, [stopName, dayType, provider, today])
 
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
   const directionOptions = directions.map((d, i) => ({ label: d.headsign, value: String(i) }))

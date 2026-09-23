@@ -117,3 +117,46 @@ describe('TimetableController の応答の到着順', () => {
     expect(screen.queryByText('エラー')).not.toBeInTheDocument()
   })
 })
+
+describe('TimetableController を開いたまま日付をまたぐ', () => {
+  it('JST の 0 時を過ぎたら、翌日の日付を出し、翌日の日付で API を引き直す', async () => {
+    respond([])
+    // タイマーも偽装し、時計を進めて 0 時をまたがせる
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+    vi.setSystemTime(new Date('2026-10-13T23:59:00+09:00'))
+    render(
+      <MantineProvider>
+        <TimetableController stopName="栄" provider="nagoya_city_bus" />
+      </MantineProvider>,
+    )
+    await act(async () => {})
+    expect(screen.getByText('10/13（火）の運行')).toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2 * 60 * 1000)
+    })
+
+    expect(screen.getByText('10/14（水）の運行')).toBeInTheDocument()
+    expect(requestedDates()).toEqual(['20261013', '20261014'])
+  })
+
+  it('タブが再び表示されたとき日付が変わっていたら、翌日の日付で引き直す（同じ日なら引き直さない）', async () => {
+    respond([])
+    renderAt('2026-10-13T23:00:00+09:00')
+    await screen.findByText('10/13（火）の運行')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(requestedDates()).toEqual(['20261013'])
+
+    vi.setSystemTime(new Date('2026-10-14T08:00:00+09:00'))
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    expect(await screen.findByText('10/14（水）の運行')).toBeInTheDocument()
+    expect(requestedDates()).toEqual(['20261013', '20261014'])
+  })
+})

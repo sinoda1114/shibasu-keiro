@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, formatServiceDateLabel, getServiceDate, isDayType, isYYYYMMDD } from '../jst'
+import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, formatServiceDateLabel, getServiceDate, msUntilNextJstDate, isDayType, isYYYYMMDD } from '../jst'
 
 describe('getJstDayType', () => {
   it('UTC では金曜でも JST で土曜なら saturday', () => {
@@ -108,5 +108,13 @@ describe('formatServiceDateLabel（画面に出す対象日）', () => {
   it('祝日なら祝日と分かるように「・祝」を付ける', () => {
     expect(formatServiceDateLabel('20261012')).toBe('10/12（月・祝）')
     expect(formatServiceDateLabel('20260503')).toBe('5/3（日・祝）')
+  })
+})
+
+describe('msUntilNextJstDate', () => {
+  it('次の JST 0 時までのミリ秒を返す（UTC の日付に関係なく JST で数える）', () => {
+    expect(msUntilNextJstDate(new Date('2026-10-13T23:59:00+09:00'))).toBe(60 * 1000)
+    expect(msUntilNextJstDate(new Date('2026-10-13T14:59:59.500Z'))).toBe(500)
+    expect(msUntilNextJstDate(new Date('2026-10-14T00:00:00+09:00'))).toBe(24 * 60 * 60 * 1000)
   })
 })

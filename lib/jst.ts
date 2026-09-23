@@ -67,6 +67,11 @@ export function formatServiceDateLabel(dateStr: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/** 次の JST 0 時（運行日が変わる時刻）までのミリ秒 */
+export function msUntilNextJstDate(now: Date = new Date()): number {
+  return DAY_MS - (toJst(now).getTime() % DAY_MS)
+}
+
 /**
  * 曜日区分から検索に使う日付を JST の YYYYMMDD で返す。検索はこの日付で運行日を引く。
  * 今日がその区分なら今日。平日の祝日に休日を選べば当日になり、事業者が日付ごとに持つ祝日の例外が効く。
