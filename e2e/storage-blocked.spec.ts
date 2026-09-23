@@ -43,4 +43,49 @@ test.describe('localStorage が遮断された環境', () => {
     await expect(page.getByRole('button', { name: 'お気に入りに追加' })).toBeVisible()
     expect(pageErrors).toEqual([])
   })
+
+  test('時刻表ページを開いてもエラーにならない', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
+    await blockLocalStorage(page)
+
+    await page.goto('/timetable')
+    // 「栄」はサーバー描画の HTML にも出るので、クライアントの描画とデータ取得が終わるまで待つ
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByText("This page couldn't load")).toHaveCount(0)
+    expect(pageErrors).toEqual([])
+  })
+})
+
+test.describe('localStorage への書き込みだけが失敗する環境（容量超過など）', () => {
+  test('お気に入り一覧で削除できなかったら、カードを残したまま知らせる', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'shibasu_keiro_favorites_v2',
+        JSON.stringify([
+          {
+            id: 'quota-1',
+            areaId: 'nagoya',
+            providerDisplayName: '名古屋市営バス',
+            fromStopName: '栄',
+            toStopName: '名古屋駅',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ])
+      )
+      Storage.prototype.setItem = () => {
+        throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+      }
+    })
+
+    await page.goto('/favorites')
+    await page.getByRole('button', { name: '削除' }).click()
+
+    await expect(page.getByText('この環境ではお気に入りを保存できません')).toBeVisible()
+    await expect(page.getByText('名古屋駅')).toBeVisible()
+    expect(pageErrors).toEqual([])
+  })
 })
