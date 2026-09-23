@@ -1,3 +1,5 @@
+import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
+
 export interface StopFavorite {
   stopName: string
   areaId: string
@@ -7,9 +9,9 @@ const KEY = 'shibasu_keiro_stop_favorites_v2'
 
 export function getStopFavorites(): StopFavorite[] {
   if (typeof window === 'undefined') return []
+  const raw = readLocalStorage(KEY)
+  if (!raw) return []
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     return parsed.filter(
@@ -27,34 +29,25 @@ export function isStopFavorited(stopName: string, areaId: string): boolean {
   return getStopFavorites().some(f => f.stopName === stopName && f.areaId === areaId)
 }
 
-export function addStopFavorite(stopName: string, areaId: string): void {
+/** 保存できたら true（既に登録済みで書き込み不要な場合も true）。遮断・容量超過なら false で状態は変わらない */
+export function addStopFavorite(stopName: string, areaId: string): boolean {
   const current = getStopFavorites()
-  if (current.some(f => f.stopName === stopName && f.areaId === areaId)) return
-  try {
-    localStorage.setItem(KEY, JSON.stringify([{ stopName, areaId }, ...current]))
-  } catch {
-    // ストレージ容量超過等では状態を変えない
-  }
+  if (current.some(f => f.stopName === stopName && f.areaId === areaId)) return true
+  return writeLocalStorage(KEY, JSON.stringify([{ stopName, areaId }, ...current]))
 }
 
-export function removeStopFavorite(stopName: string, areaId: string): void {
+/** 保存できたら true。遮断・容量超過なら false で登録済みのまま残る */
+export function removeStopFavorite(stopName: string, areaId: string): boolean {
   const current = getStopFavorites()
-  try {
-    localStorage.setItem(
-      KEY,
-      JSON.stringify(current.filter(f => !(f.stopName === stopName && f.areaId === areaId)))
-    )
-  } catch {
-    // ストレージ書き込み失敗時は無視
-  }
+  return writeLocalStorage(
+    KEY,
+    JSON.stringify(current.filter(f => !(f.stopName === stopName && f.areaId === areaId)))
+  )
 }
 
+/** 登録と解除を切り替える。保存できたら true、できなければ false（状態は変わらない） */
 export function toggleStopFavorite(stopName: string, areaId: string): boolean {
-  if (isStopFavorited(stopName, areaId)) {
-    removeStopFavorite(stopName, areaId)
-    return false
-  } else {
-    addStopFavorite(stopName, areaId)
-    return true
-  }
+  return isStopFavorited(stopName, areaId)
+    ? removeStopFavorite(stopName, areaId)
+    : addStopFavorite(stopName, areaId)
 }

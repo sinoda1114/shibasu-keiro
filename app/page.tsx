@@ -24,6 +24,7 @@ import {
 import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLocation } from '@tabler/icons-react'
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
+import { notifyFavoriteUnsaved } from '@/components/favorites/notify-favorite-unsaved'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
@@ -350,7 +351,7 @@ function SearchPageContent() {
   }
 
   const handleStarToggle = (stopName: string) => {
-    toggleStopFavorite(stopName, area)
+    if (!toggleStopFavorite(stopName, area)) notifyFavoriteUnsaved()
     setStopFavorites(getStopFavorites())
   }
 

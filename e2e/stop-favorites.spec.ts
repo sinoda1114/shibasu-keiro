@@ -137,4 +137,26 @@ test.describe('バス停お気に入りの識別とエリア絞り込み', () =>
     })
     expect(stored).toEqual([{ stopName: '横浜駅前', areaId: 'yokohama' }])
   })
+
+  test('★の保存に失敗したら、未登録のまま保存できないことを知らせる（容量超過など）', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
+    await setupStorage({
+      history: [{ from: '横浜駅前', to: '梅の木', searchedAt: new Date().toISOString() }],
+    })({ page })
+    await page.addInitScript(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+      }
+    })
+    await page.goto('/?area=yokohama')
+
+    const listbox = await openStopDropdown(page, 'from')
+    const option = listbox.getByRole('option', { name: /横浜駅前/ })
+    await option.getByRole('button', { name: ADD_STAR }).dispatchEvent('mousedown')
+
+    await expect(page.getByText('この環境ではお気に入りを保存できません')).toBeVisible()
+    await expect(option.getByRole('button', { name: ADD_STAR })).toBeVisible()
+    expect(pageErrors).toEqual([])
+  })
 })
