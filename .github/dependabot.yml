@@ -17,7 +17,16 @@ updates:
       # @mantine/* はメジャー版を揃えないと動かないので、まとめて 1 本の PR にする
       mantine:
         patterns: ["@mantine/*"]
+      # react と react-dom は同じ版でないと動かないので、型定義も含めて 1 本にする
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
     ignore:
       # 型定義は実行環境の Node に合わせて手で上げる（今は 20 系で、CI の Node 22 より古い）
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # Mantine 9 への移行は画面全体に関わるため、Issue で計画して手で上げる
+      - dependency-name: "@mantine/*"
+        update-types: ["version-update:semver-major"]
+      # @vitejs/plugin-react 6 以降は vite 8 が前提。vitest と vite を上げるときに一緒に上げる
+      - dependency-name: "@vitejs/plugin-react"
         update-types: ["version-update:semver-major"]
