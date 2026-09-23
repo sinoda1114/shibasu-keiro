@@ -58,6 +58,8 @@ export function odptKeyLocation(envName: string): string {
   return process.env.GITHUB_ACTIONS === 'true' ? `GitHub の Secret ${envName}` : `.env.local の ${envName}`
 }
 
+const MONTHS_TO_TRY = 6
+
 /**
  * ODPT Files URL に date パラメーターを付けてリクエストし、
  * 302 リダイレクト先の Azure Blob URL を返す（最大6ヶ月遡る）。
@@ -76,21 +78,21 @@ export async function resolveOdptUrl(
 
   const now = new Date()
   // その月のファイルが無いときも 403 が返りうるので、さかのぼりは最後まで続ける。
-  // どの月も取れず、認証エラーが返っていた場合だけキーの問題として止める
-  let authFailureStatus: number | undefined
-  for (let i = 0; i < 6; i++) {
+  // すべての月が認証エラーだったときだけキーの問題として止める（一部の月だけなら未公開の月とみなす）
+  const authFailures: number[] = []
+  for (let i = 0; i < MONTHS_TO_TRY; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}01`
     const tryUrl = `${baseUrl}?date=${date}&acl:consumerKey=${token}`
 
     const r = await fetch(tryUrl, { redirect: 'manual' })
-    if (isOdptAuthFailure(r.status)) authFailureStatus = r.status
+    if (isOdptAuthFailure(r.status)) authFailures.push(r.status)
     if (r.status === 302) {
       const location = r.headers.get('location')
       if (location) return { blobUrl: location, date }
     }
   }
   // ODPT の Files API（GTFS の ZIP）を使うのは横浜市営バスだけで、URL は YOKOHAMA_GTFS_URL から来る
-  if (authFailureStatus) throw odptAuthError(authFailureStatus, odptKeyLocation('YOKOHAMA_GTFS_URL'))
+  if (authFailures.length === MONTHS_TO_TRY) throw odptAuthError(authFailures[0], odptKeyLocation('YOKOHAMA_GTFS_URL'))
   return null
 }

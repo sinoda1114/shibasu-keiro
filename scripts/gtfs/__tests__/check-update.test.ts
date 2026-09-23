@@ -49,6 +49,7 @@ describe('resolveOdptUrl', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('302 レスポンスの Location ヘッダーから blobUrl と date を返すこと', async () => {
@@ -77,14 +78,19 @@ describe('resolveOdptUrl', () => {
     const error = await resolveOdptUrl(TOKEN_URL).catch((e: Error) => e)
     expect(String(error)).toMatch(/認証エラー（HTTP 403）[\s\S]*GitHub の Secret YOKOHAMA_GTFS_URL/)
     expect(String(error)).not.toMatch(/SECRET_TEST_TOKEN/)
-    vi.unstubAllEnvs()
   })
 
   it('手元で実行したときは .env.local を案内すること', async () => {
     vi.stubEnv('GITHUB_ACTIONS', '')
     vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
     await expect(resolveOdptUrl(TOKEN_URL)).rejects.toThrow(/\.env\.local の YOKOHAMA_GTFS_URL/)
-    vi.unstubAllEnvs()
+  })
+
+  it('一部の月だけ 403（未公開の月）で残りが 404 なら、キーの問題とせず null を返すこと', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 403, headers: new Headers() } as unknown as Response)
+      .mockResolvedValue({ status: 404, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).resolves.toBeNull()
   })
 
   it('ある月が 403 でも、さかのぼった月で 302 が返れば取得できること', async () => {
