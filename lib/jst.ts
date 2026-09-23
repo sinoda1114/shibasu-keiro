@@ -44,7 +44,33 @@ export function formatJstYYYYMMDD(now: Date = new Date()): string {
   return `${jst.getUTCFullYear()}${m}${d}`
 }
 
+/** URL のクエリなど外から来た値が YYYYMMDD の実在する日付か（20260230 のような存在しない日付は弾く） */
+export function isYYYYMMDD(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{8}$/.test(value)) return false
+  const y = Number(value.slice(0, 4))
+  const m = Number(value.slice(4, 6))
+  const d = Number(value.slice(6, 8))
+  const date = new Date(Date.UTC(y, m - 1, d))
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+}
+
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
+
+/** YYYYMMDD を画面に出す「10/13（火）」の形にする。祝日は「10/12（月・祝）」 */
+export function formatServiceDateLabel(dateStr: string): string {
+  const y = Number(dateStr.slice(0, 4))
+  const m = Number(dateStr.slice(4, 6))
+  const d = Number(dateStr.slice(6, 8))
+  const weekday = WEEKDAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return `${m}/${d}（${weekday}${isJpHoliday(y, m, d) ? '・祝' : ''}）`
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000
+
+/** 次の JST 0 時（運行日が変わる時刻）までのミリ秒 */
+export function msUntilNextJstDate(now: Date = new Date()): number {
+  return DAY_MS - (toJst(now).getTime() % DAY_MS)
+}
 
 /**
  * 曜日区分から検索に使う日付を JST の YYYYMMDD で返す。検索はこの日付で運行日を引く。

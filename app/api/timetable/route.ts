@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq, inArray, isNotNull, or } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db/client'
-import { busStops, busStopTimes, busTrips, gtfsCalendar } from '@/lib/db/schema'
-import { getActiveVersionId } from '@/lib/gtfs/service-resolver'
-import { isDayType, type DayType } from '@/lib/jst'
+import { busStops, busStopTimes, busTrips } from '@/lib/db/schema'
+import { getActiveVersionId, resolveServiceIds } from '@/lib/gtfs/service-resolver'
+import { formatJstYYYYMMDD, getServiceDate, isDayType, isYYYYMMDD } from '@/lib/jst'
 
 export interface TimetableDirection {
   headsign: string
@@ -11,44 +11,28 @@ export interface TimetableDirection {
   lastDeparture: { hour: number; minute: number }
 }
 
-async function resolveServiceIdsByDayType(
-  providerId: string,
-  gtfsVersionId: string,
-  dayType: DayType
-): Promise<string[]> {
-  const dayFilter =
-    dayType === 'weekday'
-      ? or(
-          eq(gtfsCalendar.monday, 1),
-          eq(gtfsCalendar.tuesday, 1),
-          eq(gtfsCalendar.wednesday, 1),
-          eq(gtfsCalendar.thursday, 1),
-          eq(gtfsCalendar.friday, 1)
-        )
-      : dayType === 'saturday'
-      ? eq(gtfsCalendar.saturday, 1)
-      : eq(gtfsCalendar.sunday, 1)
-
-  const rows = await getDb()
-    .select({ serviceId: gtfsCalendar.serviceId })
-    .from(gtfsCalendar)
-    .where(and(eq(gtfsCalendar.providerId, providerId), eq(gtfsCalendar.gtfsVersionId, gtfsVersionId), dayFilter))
-
-  return [...new Set(rows.map((r) => r.serviceId))]
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const stopName = searchParams.get('stopName')?.trim()
-  const dayType = searchParams.get('dayType') ?? 'weekday'
+  // 検索（/api/routes/direct）と同じく日付で運行日を引き、calendar_dates の例外（祝日・年末年始の運休や臨時便）を反映する
+  const dateParam = searchParams.get('date')
+  // 更新前の画面（開いたままのタブ）は date を送らず dayType だけを送る。黙って今日の時刻表を返さず、
+  // その区分の代表日で引く。画面の更新が行き渡ったら、この分岐は消してよい
+  const legacyDayType = searchParams.get('dayType')
+  const dateStr = dateParam ?? (isDayType(legacyDayType) ? getServiceDate(legacyDayType) : formatJstYYYYMMDD())
+  // 日付なしの URL は日付が変わると別の時刻表を指すので、CDN に残さない
+  const cacheControl = dateParam === null ? 'no-store' : 's-maxage=3600, stale-while-revalidate=86400'
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   if (!stopName) {
     return NextResponse.json({ success: false, error: 'stopName は必須です' }, { status: 400 })
   }
-  // 未知の値を日曜ダイヤとして黙って返さない
-  if (!isDayType(dayType)) {
-    return NextResponse.json({ success: false, error: 'dayType は weekday / saturday / holiday のいずれかです' }, { status: 400 })
+  if (dateParam === null && legacyDayType !== null && !isDayType(legacyDayType)) {
+    return NextResponse.json({ success: false, error: 'dayType は weekday / saturday / holiday のいずれかで指定してください' }, { status: 400 })
+  }
+  // 存在しない日付を曜日の計算で別の日に読み替えて黙って返さない
+  if (!isYYYYMMDD(dateStr)) {
+    return NextResponse.json({ success: false, error: 'date は YYYYMMDD 形式の実在する日付で指定してください' }, { status: 400 })
   }
 
   const versionId = await getActiveVersionId(providerId)
@@ -64,14 +48,14 @@ export async function GET(req: NextRequest) {
       .select({ stopId: busStops.stopId })
       .from(busStops)
       .where(and(eq(busStops.providerId, providerId), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, stopName))),
-    resolveServiceIdsByDayType(providerId, versionId, dayType),
+    resolveServiceIds(providerId, versionId, dateStr),
   ])
 
   if (stops.length === 0) {
     return NextResponse.json({ success: false, error: 'バス停が見つかりません' }, { status: 404 })
   }
   if (serviceIds.length === 0) {
-    return NextResponse.json({ success: true, data: [] })
+    return NextResponse.json({ success: true, data: [] }, { headers: { 'Cache-Control': cacheControl } })
   }
 
   const stopIds = stops.map((s) => s.stopId)
@@ -132,6 +116,6 @@ export async function GET(req: NextRequest) {
   })
 
   return NextResponse.json({ success: true, data }, {
-    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+    headers: { 'Cache-Control': cacheControl },
   })
 }
