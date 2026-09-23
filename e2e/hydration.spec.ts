@@ -1,0 +1,112 @@
+import { test, expect, type Page } from '@playwright/test'
+
+const HISTORY_KEY = 'shibasu_keiro_search_history'
+const FAVORITES_KEY = 'shibasu_keiro_stop_favorites_v2'
+const LAST_AREA_KEY = 'shibasu_keiro_last_area'
+
+function collectHydrationErrors(page: Page): string[] {
+  const errors: string[] = []
+  const record = (text: string) => {
+    if (text.includes('Hydration failed') || text.includes("didn't match")) errors.push(text)
+  }
+  page.on('pageerror', (e) => record(e.message))
+  page.on('console', (m) => {
+    if (m.type() === 'error') record(m.text())
+  })
+  return errors
+}
+
+type DayType = 'weekday' | 'saturday' | 'holiday'
+
+function dayTypeOf(date: Date): DayType {
+  const day = date.getDay()
+  if (day === 0) return 'holiday'
+  if (day === 6) return 'saturday'
+  return 'weekday'
+}
+
+// サーバーと時刻も曜日区分も食い違う日時。テストランナーと dev サーバーは同じマシンで動く
+function clockSkewedFromServer(): Date {
+  const serverNow = new Date()
+  const skewed = new Date(serverNow.getTime() + (3 * 60 + 17) * 60 * 1000)
+  while (dayTypeOf(skewed) === dayTypeOf(serverNow)) skewed.setDate(skewed.getDate() + 1)
+  return skewed
+}
+
+test.describe('ハイドレーション不一致', () => {
+  test('検索履歴が入った状態でトップページを開いても不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+
+    await page.addInitScript(
+      ([historyKey, favoritesKey]) => {
+        localStorage.setItem(
+          historyKey,
+          JSON.stringify([{ from: '栄', to: '名古屋駅', searchedAt: new Date().toISOString() }])
+        )
+        localStorage.setItem(favoritesKey, JSON.stringify([{ stopName: '栄', areaId: 'nagoya' }]))
+      },
+      [HISTORY_KEY, FAVORITES_KEY]
+    )
+
+    await page.goto('/?area=nagoya')
+
+    await expect(page.getByText('最近の検索')).toBeVisible()
+    await expect(page.getByRole('button', { name: '栄 → 名古屋駅' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('前回選択エリアが保存された状態でクエリ無しのトップページを開いても不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+
+    await page.addInitScript((areaKey) => {
+      localStorage.setItem(areaKey, 'yokohama')
+    }, LAST_AREA_KEY)
+
+    await page.goto('/')
+
+    await expect(page.getByRole('radio', { name: '横浜' })).toBeChecked()
+    expect(errors).toEqual([])
+  })
+
+  test('ブラウザの時計がサーバーとずれていても不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+    const browserNow = clockSkewedFromServer()
+    await page.clock.setFixedTime(browserNow)
+
+    await page.goto('/?area=nagoya')
+
+    const hh = String(browserNow.getHours()).padStart(2, '0')
+    const mm = String(browserNow.getMinutes()).padStart(2, '0')
+    await expect(page.getByRole('button', { name: `${hh}:${mm}` })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('localStorage が遮断された環境でもエリア切替と検索ができる', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError')
+        },
+      })
+    })
+
+    await page.goto('/')
+
+    // エリア切替はハイドレーション後にしか効かないので、URL が変わるまで押し直す
+    await expect(async () => {
+      await page.locator('label').filter({ hasText: '横浜' }).click()
+      await expect(page).toHaveURL(/area=yokohama/, { timeout: 500 })
+    }).toPass({ timeout: 10_000 })
+
+    await page.locator('[name="from"]').fill('横浜駅前')
+    await page.locator('[name="to"]').fill('梅の木')
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'バスを検索' }).click()
+
+    await expect(page).toHaveURL(/\/search\?/)
+    expect(pageErrors).toEqual([])
+  })
+})

@@ -25,6 +25,7 @@ import { IconArrowsUpDown, IconSearch, IconClock, IconX, IconStar, IconCurrentLo
 import { saveSearchHistory, getSearchHistory, type SearchHistoryItem } from '@/lib/search-history/local-storage'
 import { getStopFavorites, toggleStopFavorite, type StopFavorite } from '@/lib/stop-favorites/local-storage'
 import { LAST_FROM_STOP_KEY, LAST_AREA_KEY } from '@/lib/storage-keys'
+import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 
@@ -44,6 +45,23 @@ function getNowTime(): string {
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')
   return `${hh}:${mm}`
+}
+
+// ストレージが遮断された環境（Safari の Cookie 全遮断など）では localStorage への参照自体が SecurityError を投げる
+function readLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // 保存できなくても操作自体は続ける
+  }
 }
 
 async function fetchStopSuggestions(query: string, area: string): Promise<string[]> {
@@ -218,6 +236,7 @@ function WheelColumn({
 
 function TimePickerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [opened, setOpened] = useState(false)
+  const isHydrated = useIsHydrated()
   const [hour, minute] = value.split(':').map((n) => parseInt(n, 10))
 
   const setHour = (h: number) =>
@@ -238,7 +257,7 @@ function TimePickerInput({ value, onChange }: { value: string; onChange: (v: str
           size="md"
           styles={{ input: { textAlign: 'left', cursor: 'pointer' } }}
         >
-          {value}
+          {isHydrated ? value : null}
         </Input>
       </Popover.Target>
       <Popover.Dropdown p="md">
@@ -267,8 +286,9 @@ function SearchPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const isHydrated = useIsHydrated()
   const area = searchParams.get('area') ??
-    (typeof window !== 'undefined' ? localStorage.getItem(LAST_AREA_KEY) ?? DEFAULT_AREA_ID : DEFAULT_AREA_ID)
+    (isHydrated ? readLocalStorage(LAST_AREA_KEY) : null) ?? DEFAULT_AREA_ID
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -286,7 +306,7 @@ function SearchPageContent() {
   const [stopFavorites, setStopFavorites] = useState<StopFavorite[]>(() => getStopFavorites())
 
   const handleAreaChange = (newArea: string) => {
-    localStorage.setItem(LAST_AREA_KEY, newArea)
+    writeLocalStorage(LAST_AREA_KEY, newArea)
     setFromStop('')
     setToStop('')
     const params = new URLSearchParams(searchParams.toString())
@@ -414,7 +434,7 @@ function SearchPageContent() {
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())
-    localStorage.setItem(LAST_FROM_STOP_KEY, fromStop)
+    writeLocalStorage(LAST_FROM_STOP_KEY, fromStop)
     router.push(`/search?${params.toString()}`)
   }
 
@@ -575,7 +595,7 @@ function SearchPageContent() {
                   ダイヤ区分
                 </Text>
                 <SegmentedControl
-                  value={dayType}
+                  value={isHydrated ? dayType : ''}
                   onChange={(v) => setDayType(v as DayType)}
                   data={[
                     { label: '平日', value: 'weekday' },
@@ -634,7 +654,7 @@ function SearchPageContent() {
           </form>
         </Card>
 
-        {history.length > 0 && (
+        {isHydrated && history.length > 0 && (
           <Stack gap="xs">
             <Text size="xs" c="dimmed">最近の検索</Text>
             <Stack gap={4}>
