@@ -11,7 +11,7 @@ interface CacheEntry<T> {
   expiresAt: number
 }
 
-const versionCache = new Map<string, CacheEntry<string | null>>()
+const versionCache = new Map<string, CacheEntry<string>>()
 const serviceIdsCache = new Map<string, CacheEntry<string[]>>()
 
 function pruneExpired<T>(cache: Map<string, CacheEntry<T>>): void {
@@ -32,6 +32,9 @@ export async function getActiveVersionId(providerId: string): Promise<string | n
     .where(and(eq(gtfsVersions.providerId, providerId), eq(gtfsVersions.status, 'active')))
     .limit(1)
   const value = rows[0]?.id ?? null
+
+  // 版が無い（インポートの障害）結果はキャッシュしない。キャッシュすると復旧後も最長 TTL の間 503 が続く
+  if (value === null) return null
 
   pruneExpired(versionCache)
   versionCache.set(providerId, { value, expiresAt: now + CACHE_TTL_MS })

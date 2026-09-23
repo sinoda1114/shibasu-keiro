@@ -8,8 +8,9 @@ import {
   resolveServiceIds,
   secondsToHHMM,
 } from '@/lib/gtfs/service-resolver'
-import { getAreaConfig } from '@/lib/providers/providers'
+import { getAreaConfig, providerIdToDisplayName } from '@/lib/providers/providers'
 import { formatJstYYYYMMDD } from '@/lib/jst'
+import { collectProviderResults } from '@/app/api/routes/provider-results'
 
 export interface NearbyTrip {
   tripId: string
@@ -33,6 +34,8 @@ export interface NearbyRouteResponse {
   success: boolean
   data: NearbyStop[]
   date: string
+  /** 有効な GTFS の版が無く、検索できなかった事業者の ID。欠けが無ければ空配列 */
+  missingProviders: string[]
 }
 
 // 500m の緯度・経度オフセット（概算）
@@ -57,9 +60,10 @@ async function queryOneProvider(
   lon: number,
   toName: string,
   dateStr: string
-): Promise<NearbyStop[]> {
+): Promise<NearbyStop[] | null> {
+  // 版が無い（インポートの障害）ときは null。便が無い空配列と区別する
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) return []
+  if (!versionId) return null
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
   if (serviceIds.length === 0) return []
@@ -172,11 +176,7 @@ async function queryOneProvider(
     )
     .orderBy(fromSt.departureTimeSeconds)
 
-  const providerDisplayName =
-    providerId === 'nagoya_city_bus' ? '名古屋市バス'
-    : providerId === 'yokohama_city_bus' ? '横浜市営バス'
-    : providerId === 'sotetsu_bus' ? '相鉄バス'
-    : providerId
+  const providerDisplayName = providerIdToDisplayName(providerId)
 
   const stopIdToName = new Map(nearbyStops.map((s) => [s.stopId, s.stopName]))
   const tripsByStopName = new Map<string, NearbyTrip[]>()
@@ -248,13 +248,16 @@ export async function GET(req: NextRequest) {
   }
 
   const area = getAreaConfig(areaId)
-  const results = await Promise.all(
-    area.providerIds.map((pid) => queryOneProvider(pid, lat, lon, toName, dateStr))
+  const outcome = collectProviderResults(
+    'api/routes/nearby',
+    area.providerIds,
+    await Promise.all(area.providerIds.map((pid) => queryOneProvider(pid, lat, lon, toName, dateStr)))
   )
+  if (!outcome.ok) return outcome.response
 
   // 全プロバイダーの NearbyStop をマージ: 同stopName は distanceM が小さい方を代表に
   const merged = new Map<string, NearbyStop>()
-  for (const stops of results) {
+  for (const stops of outcome.results) {
     for (const stop of stops) {
       const existing = merged.get(stop.stopName)
       if (!existing) {
@@ -271,5 +274,6 @@ export async function GET(req: NextRequest) {
 
   const data = Array.from(merged.values()).sort((a, b) => a.distanceM - b.distanceM)
 
-  return NextResponse.json({ success: true, data, date: dateStr })
+  const body: NearbyRouteResponse = { success: true, data, date: dateStr, missingProviders: outcome.missingProviders }
+  return NextResponse.json(body)
 }

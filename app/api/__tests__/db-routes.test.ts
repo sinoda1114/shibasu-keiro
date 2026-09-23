@@ -15,7 +15,8 @@ import { GET as timetable } from '@/app/api/timetable/route'
 
 // API ルートを実際の SQLite（マイグレーション適用済み）に対してモックなしで叩く。
 // 対象は /api/stops/search・/api/routes/direct・/api/timetable。E2E は API を page.route でモックしているため、
-// これらのクエリはここで守る。nearby / trip-stops は未検証のまま。
+// これらのクエリはここで守る。nearby は有効な版が無いときの扱いだけ routes-no-data.test.ts で検証し、
+// trip-stops は未検証のまま。
 
 const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'
@@ -131,6 +132,11 @@ describe('/api/routes/direct（実 DB）', () => {
   it('同じエリアの別事業者（相鉄バス）の便は相鉄バスとして返す', async () => {
     const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅西口&to=梅の木&area=yokohama&date=${THURSDAY}`)
     expect(body.data).toEqual([expect.objectContaining({ tripId: 'S1', providerDisplayName: '相鉄バス' })])
+  })
+
+  it('エリアの全事業者に有効な版があれば missingProviders は空配列', async () => {
+    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${THURSDAY}`)
+    expect(body.missingProviders).toEqual([])
   })
 
   it('逆方向（停車順が逆）は直通便として返さない', async () => {

@@ -8,8 +8,9 @@ import {
   resolveServiceIds,
   secondsToHHMM,
 } from '@/lib/gtfs/service-resolver'
-import { getAreaConfig } from '@/lib/providers/providers'
+import { getAreaConfig, providerIdToDisplayName } from '@/lib/providers/providers'
 import { formatJstYYYYMMDD } from '@/lib/jst'
+import { collectProviderResults } from '@/app/api/routes/provider-results'
 
 export interface DirectRouteResult {
   tripId: string
@@ -25,14 +26,24 @@ export interface DirectRouteResult {
   providerDisplayName: string
 }
 
+export interface DirectRouteResponse {
+  success: true
+  data: DirectRouteResult[]
+  date: string
+  sotetsuStopsExist: boolean
+  /** 有効な GTFS の版が無く、検索できなかった事業者の ID。欠けが無ければ空配列 */
+  missingProviders: string[]
+}
+
 async function queryOneProvider(
   providerId: string,
   fromName: string,
   toName: string,
   dateStr: string
-): Promise<DirectRouteResult[]> {
+): Promise<DirectRouteResult[] | null> {
+  // 版が無い（インポートの障害）ときは null。便が無い空配列と区別する
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) return []
+  if (!versionId) return null
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
   if (serviceIds.length === 0) return []
@@ -115,11 +126,7 @@ async function queryOneProvider(
     .orderBy(fromSt.departureTimeSeconds)
     .limit(500)
 
-  const providerDisplayName =
-    providerId === 'nagoya_city_bus' ? '名古屋市バス'
-    : providerId === 'yokohama_city_bus' ? '横浜市営バス'
-    : providerId === 'sotetsu_bus' ? '相鉄バス'
-    : providerId
+  const providerDisplayName = providerIdToDisplayName(providerId)
 
   return rows.map((r) => ({
     tripId: r.tripId,
@@ -170,20 +177,30 @@ export async function GET(req: NextRequest) {
   }
 
   const area = getAreaConfig(areaId)
-  const results = await Promise.all(
-    area.providerIds.map((pid) => queryOneProvider(pid, fromName, toName, dateStr))
+  const outcome = collectProviderResults(
+    'api/routes/direct',
+    area.providerIds,
+    await Promise.all(area.providerIds.map((pid) => queryOneProvider(pid, fromName, toName, dateStr)))
   )
+  if (!outcome.ok) return outcome.response
 
-  const data = results
+  const data = outcome.results
     .flat()
     .sort((a, b) => a.departureSeconds - b.departureSeconds)
 
-  const hasSotetsu = area.providerIds.includes('sotetsu_bus')
+  const { missingProviders } = outcome
+  // 版の無い相鉄バスは調べない（「バス停はあるが未収録」ではなく missingProviders の注意書きで伝える）
+  const hasSotetsu = area.providerIds.includes('sotetsu_bus') && !missingProviders.includes('sotetsu_bus')
   const sotetsuStopsExist = hasSotetsu && data.length === 0
     ? await checkSotetsuStopsExist(fromName, toName)
     : false
 
-  return NextResponse.json({ success: true, data, date: dateStr, sotetsuStopsExist }, {
-    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+  // 一部の事業者が欠けた結果は、データが戻った後も CDN に残り続けないようキャッシュしない
+  const cacheControl = missingProviders.length > 0
+    ? 'no-store'
+    : 's-maxage=3600, stale-while-revalidate=86400'
+  const body: DirectRouteResponse = { success: true, data, date: dateStr, sotetsuStopsExist, missingProviders }
+  return NextResponse.json(body, {
+    headers: { 'Cache-Control': cacheControl },
   })
 }

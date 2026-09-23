@@ -32,7 +32,6 @@ export interface AreaConfig {
   displayName: string
   icon: string
   providerIds: string[]
-  providerDisplayNames: string[]
 }
 
 export const AREA_CONFIGS: AreaConfig[] = [
@@ -41,14 +40,12 @@ export const AREA_CONFIGS: AreaConfig[] = [
     displayName: '名古屋',
     icon: '🏯',
     providerIds: [PROVIDERS.NAGOYA_CITY_BUS],
-    providerDisplayNames: ['名古屋市バス'],
   },
   {
     id: 'yokohama',
     displayName: '横浜',
     icon: '⚓',
     providerIds: [PROVIDERS.YOKOHAMA_CITY_BUS, PROVIDERS.SOTETSU_BUS],
-    providerDisplayNames: ['横浜市営バス', '相鉄バス'],
   },
 ]
 
