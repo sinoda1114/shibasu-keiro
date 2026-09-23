@@ -93,6 +93,13 @@ describe('resolveOdptUrl', () => {
     await expect(resolveOdptUrl(TOKEN_URL)).resolves.toBeNull()
   })
 
+  it('401 は 1 か月だけでも認証エラーとして止めること（401 は未公開の月を意味しない）', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 401, headers: new Headers() } as unknown as Response)
+      .mockResolvedValue({ status: 404, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).rejects.toThrow(/認証エラー（HTTP 401）/)
+  })
+
   it('ある月が 403 でも、さかのぼった月で 302 が返れば取得できること', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({ status: 403, headers: new Headers() } as unknown as Response)

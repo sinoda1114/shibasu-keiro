@@ -78,7 +78,7 @@ export async function resolveOdptUrl(
 
   const now = new Date()
   // その月のファイルが無いときも 403 が返りうるので、さかのぼりは最後まで続ける。
-  // すべての月が認証エラーだったときだけキーの問題として止める（一部の月だけなら未公開の月とみなす）
+  // 認証エラーの扱いは末尾で決める
   const authFailures: number[] = []
   for (let i = 0; i < MONTHS_TO_TRY; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -93,6 +93,8 @@ export async function resolveOdptUrl(
     }
   }
   // ODPT の Files API（GTFS の ZIP）を使うのは横浜市営バスだけで、URL は YOKOHAMA_GTFS_URL から来る
-  if (authFailures.length === MONTHS_TO_TRY) throw odptAuthError(authFailures[0], odptKeyLocation('YOKOHAMA_GTFS_URL'))
+  // 401 は認証の失敗以外を意味しないので 1 回でも止める。403 は未公開の月でも返りうるので全月のときだけ
+  const keyProblem = authFailures.includes(401) ? 401 : authFailures.length === MONTHS_TO_TRY ? authFailures[0] : undefined
+  if (keyProblem) throw odptAuthError(keyProblem, odptKeyLocation('YOKOHAMA_GTFS_URL'))
   return null
 }
