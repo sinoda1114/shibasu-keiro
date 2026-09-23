@@ -31,8 +31,8 @@ import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
 import { getJstDayType, getJstTime, isDayType, type DayType } from '@/lib/jst'
+import { isTimeMode, type TimeMode } from '@/lib/time-mode'
 
-type TimeMode = 'depart' | 'arrive'
 type SearchMode = 'stop' | 'nearby'
 
 function getNowTime(): string {
@@ -278,7 +278,11 @@ function SearchPageContent() {
     const fromUrl = searchParams.get('dayType')
     return isDayType(fromUrl) ? fromUrl : getJstDayType()
   })
-  const [timeMode, setTimeMode] = useState<TimeMode>(() => (searchParams.get('timeMode') as TimeMode) ?? 'depart')
+  // 未知の値なら出発時刻にする（「出発」「到着」のどちらも選ばれていない状態で開かない）
+  const [timeMode, setTimeMode] = useState<TimeMode>(() => {
+    const fromUrl = searchParams.get('timeMode')
+    return isTimeMode(fromUrl) ? fromUrl : 'depart'
+  })
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => getSearchHistory())
