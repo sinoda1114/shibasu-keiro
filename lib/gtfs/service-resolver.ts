@@ -1,6 +1,7 @@
 import { and, eq, gte, lte } from 'drizzle-orm'
 import { getDb } from '../db/client'
 import { gtfsVersions, gtfsCalendar, gtfsCalendarDates } from '../db/schema'
+import { isJpHoliday } from '../jp-holidays'
 
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
 
@@ -36,6 +37,30 @@ export async function getActiveVersionId(providerId: string): Promise<string | n
   return value
 }
 
+const exceptionPresenceCache = new Map<string, CacheEntry<boolean>>()
+
+// 版に calendar_dates が 1 行でもあるか。GTFS の事業者は祝日を日付ごとの例外で表すが、
+// 相鉄バス（ODPT から合成）は平日・土曜・休日の 3 種の calendar だけで例外を持たない
+async function hasCalendarExceptions(providerId: string, gtfsVersionId: string): Promise<boolean> {
+  const cacheKey = `${providerId}:${gtfsVersionId}`
+  const now = Date.now()
+  const cached = exceptionPresenceCache.get(cacheKey)
+  if (cached && cached.expiresAt > now) return cached.value
+  const rows = await getDb()
+    .select({ id: gtfsCalendarDates.id })
+    .from(gtfsCalendarDates)
+    .where(and(eq(gtfsCalendarDates.providerId, providerId), eq(gtfsCalendarDates.gtfsVersionId, gtfsVersionId)))
+    .limit(1)
+  const value = rows.length > 0
+  pruneExpired(exceptionPresenceCache)
+  exceptionPresenceCache.set(cacheKey, { value, expiresAt: now + CACHE_TTL_MS })
+  return value
+}
+
+function isHolidayDate(dateStr: string): boolean {
+  return isJpHoliday(Number(dateStr.slice(0, 4)), Number(dateStr.slice(4, 6)), Number(dateStr.slice(6, 8)))
+}
+
 /**
  * 指定日付に有効な service_id 集合を解決する。
  * calendar_dates の例外（追加/削除）を calendar の曜日判定に重ねる。
@@ -50,7 +75,10 @@ export async function resolveServiceIds(
   const cached = serviceIdsCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return cached.value
 
-  const dowCol = getDowColumn(dateStr)
+  // 例外を持たない事業者では、平日・土曜の祝日を日曜のダイヤとして扱う（祝日は休日ダイヤで走る）
+  const dowCol = isHolidayDate(dateStr) && !(await hasCalendarExceptions(providerId, gtfsVersionId))
+    ? 'sunday'
+    : getDowColumn(dateStr)
 
   // 1. calendar から全 service_id を取得し、曜日カラムで JS 側フィルタ
   const calRows = await getDb()

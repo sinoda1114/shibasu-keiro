@@ -25,6 +25,7 @@ import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
 import type { NearbyStop } from '@/app/api/routes/nearby/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
+import { getServiceDate } from '@/lib/jst'
 
 interface DirectRouteResult {
   tripId: string
@@ -46,32 +47,9 @@ const DAY_TYPE_LABELS: Record<string, string> = {
   holiday: '休日',
 }
 
-function formatYYYYMMDD(d: Date): string {
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(d.getUTCDate()).padStart(2, '0')
-  return `${y}${m}${day}`
-}
-
-function getDayTypeDate(dayType: string): string {
-  const today = new Date()
-  const jst = new Date(today.getTime() + 9 * 60 * 60 * 1000)
-  const dow = jst.getUTCDay() // 0=日, 1=月, ..., 6=土
-
-  if (dayType === 'saturday') {
-    const daysUntilSat = dow === 6 ? 0 : (6 - dow)
-    const sat = new Date(jst.getTime() + daysUntilSat * 86400000)
-    return formatYYYYMMDD(sat)
-  }
-  if (dayType === 'holiday') {
-    const daysUntilSun = dow === 0 ? 0 : (7 - dow)
-    const sun = new Date(jst.getTime() + daysUntilSun * 86400000)
-    return formatYYYYMMDD(sun)
-  }
-  // weekday: 今日が平日ならそのまま、土日なら次の月曜
-  if (dow === 0) return formatYYYYMMDD(new Date(jst.getTime() + 86400000))
-  if (dow === 6) return formatYYYYMMDD(new Date(jst.getTime() + 2 * 86400000))
-  return formatYYYYMMDD(jst)
+// URL の dayType が未知の値なら平日として扱う（従来の getDayTypeDate と同じ）
+function serviceDateOf(dayType: string): string {
+  return getServiceDate(dayType === 'saturday' || dayType === 'holiday' ? dayType : 'weekday')
 }
 
 function timeToSeconds(hhmm: string): number {
@@ -139,7 +117,7 @@ function SearchResultContent() {
   const setIsFavorited = (value: boolean) => setFavoritedOverride({ key: favoriteKey, value })
 
   useEffect(() => {
-    const date = getDayTypeDate(dayType)
+    const date = serviceDateOf(dayType)
     const controller = new AbortController()
     const settle = (partial: Partial<Omit<SearchResponse, 'key'>>) => {
       if (controller.signal.aborted) return
@@ -176,7 +154,7 @@ function SearchResultContent() {
     return () => controller.abort()
   }, [from, to, lat, lon, isNearbyMode, dayType, area, requestKey])
 
-  const date = getDayTypeDate(dayType)
+  const date = serviceDateOf(dayType)
   const nowSec = (() => {
     const now = new Date()
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)

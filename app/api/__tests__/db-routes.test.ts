@@ -20,6 +20,8 @@ const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'
 const SATURDAY = '20260926'
 const SATURDAY_EXTRA = '20261003'
+const MONDAY_HOLIDAY = '20261012' // スポーツの日
+const TUESDAY_AFTER_HOLIDAY = '20261013'
 const NOW = '2026-01-01T00:00:00Z'
 
 let dir: string
@@ -43,6 +45,7 @@ async function seed() {
   await db.insert(gtfsCalendar).values([
     { id: 'c1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', ...weekdays, startDate: '20260101', endDate: '20261231' },
     { id: 'c2', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', serviceId: 'WD', ...weekdays, startDate: '20260101', endDate: '20261231' },
+    { id: 'c3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', serviceId: 'HOL', monday: 0, tuesday: 0, wednesday: 0, thursday: 0, friday: 0, saturday: 0, sunday: 1, startDate: '20260101', endDate: '20261231' },
   ])
   await db.insert(gtfsCalendarDates).values([
     { id: 'cd1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', date: FRIDAY_SUSPENDED, exceptionType: 2 },
@@ -61,12 +64,15 @@ async function seed() {
   await db.insert(busTrips).values([
     { id: 't1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', routeId: 'R1', serviceId: 'WD', tripHeadsign: '高島町', createdAt: NOW },
     { id: 't2', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', routeId: 'RS', serviceId: 'WD', tripHeadsign: '梅の木', createdAt: NOW },
+    { id: 't3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', routeId: 'RS', serviceId: 'HOL', tripHeadsign: '梅の木', createdAt: NOW },
   ])
   await db.insert(busStopTimes).values([
     { id: 'st1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', stopId: 'A', arrivalTimeSeconds: hhmm(8, 0), departureTimeSeconds: hhmm(8, 0), stopSequence: 1, createdAt: NOW },
     { id: 'st2', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', stopId: 'B', arrivalTimeSeconds: hhmm(8, 20), departureTimeSeconds: hhmm(8, 20), stopSequence: 2, createdAt: NOW },
     { id: 'st3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'W', arrivalTimeSeconds: hhmm(8, 10), departureTimeSeconds: hhmm(8, 10), stopSequence: 1, createdAt: NOW },
     { id: 'st4', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'U', arrivalTimeSeconds: hhmm(8, 40), departureTimeSeconds: hhmm(8, 40), stopSequence: 2, createdAt: NOW },
+    { id: 'st5', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'W', arrivalTimeSeconds: hhmm(9, 10), departureTimeSeconds: hhmm(9, 10), stopSequence: 1, createdAt: NOW },
+    { id: 'st6', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'U', arrivalTimeSeconds: hhmm(9, 40), departureTimeSeconds: hhmm(9, 40), stopSequence: 2, createdAt: NOW },
   ])
 }
 
@@ -130,6 +136,19 @@ describe('/api/routes/direct（実 DB）', () => {
     expect(suspended.body.data).toEqual([])
     const extra = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${SATURDAY_EXTRA}`)
     expect(extra.body.data).toHaveLength(1)
+  })
+
+  it('日付ごとの例外を持たない事業者（相鉄バス）は、平日の祝日を日曜のダイヤで扱う', async () => {
+    const holiday = await getJson(directRoutes, `/api/routes/direct?from=横浜駅西口&to=梅の木&area=yokohama&date=${MONDAY_HOLIDAY}`)
+    expect(holiday.body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['S2'])
+    const nextDay = await getJson(directRoutes, `/api/routes/direct?from=横浜駅西口&to=梅の木&area=yokohama&date=${TUESDAY_AFTER_HOLIDAY}`)
+    expect(nextDay.body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['S1'])
+  })
+
+  it('日付ごとの例外を持つ事業者（横浜市営バス）は、祝日もデータのとおりに判定する', async () => {
+    // この版は 2026-10-12 の例外を持たないので、月曜として平日ダイヤが走る
+    const { body } = await getJson(directRoutes, `/api/routes/direct?from=横浜駅前&to=高島町&area=yokohama&date=${MONDAY_HOLIDAY}`)
+    expect(body.data.map((r: { tripId: string }) => r.tripId)).toEqual(['T1'])
   })
 
   it('date が YYYYMMDD でなければ 400', async () => {

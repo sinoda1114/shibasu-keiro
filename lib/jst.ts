@@ -24,3 +24,25 @@ export function getJstTime(now: Date = new Date()): { hour: number; minute: numb
   const jst = toJst(now)
   return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
 }
+
+function formatJstYmd(now: Date): string {
+  const jst = toJst(now)
+  const m = String(jst.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(jst.getUTCDate()).padStart(2, '0')
+  return `${jst.getUTCFullYear()}${m}${d}`
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * 曜日区分に当たる直近の日（今日を含む）を JST の YYYYMMDD で返す。検索はこの日付で運行日を引く。
+ * 平日の祝日に休日を選べば当日になり、事業者が日付ごとに持つ祝日の例外がそのまま効く。
+ * 祝日は平日・土曜として選ばない。
+ */
+export function getServiceDate(dayType: DayType, now: Date = new Date()): string {
+  for (let i = 0; i < 31; i++) {
+    const day = new Date(now.getTime() + i * DAY_MS)
+    if (getJstDayType(day) === dayType) return formatJstYmd(day)
+  }
+  throw new Error(`${dayType} に当たる日が 31 日以内に見つかりません`)
+}
