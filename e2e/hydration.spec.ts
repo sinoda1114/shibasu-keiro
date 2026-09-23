@@ -81,7 +81,7 @@ test.describe('ハイドレーション不一致', () => {
     expect(errors).toEqual([])
   })
 
-  test('localStorage が遮断された環境でもトップページが表示される', async ({ page }) => {
+  test('localStorage が遮断された環境でもエリア切替と検索ができる', async ({ page }) => {
     const pageErrors: string[] = []
     page.on('pageerror', (e) => pageErrors.push(e.message))
     await page.addInitScript(() => {
@@ -95,11 +95,18 @@ test.describe('ハイドレーション不一致', () => {
 
     await page.goto('/')
 
-    // 検索モードの切り替えはハイドレーション後にしか効かない。効いたら描画を最後まで終えている
+    // エリア切替はハイドレーション後にしか効かないので、URL が変わるまで押し直す
     await expect(async () => {
-      await page.getByText('📍 近くから探す').click()
-      await expect(page.getByRole('button', { name: '現在地から検索' })).toBeVisible({ timeout: 500 })
+      await page.locator('label').filter({ hasText: '横浜' }).click()
+      await expect(page).toHaveURL(/area=yokohama/, { timeout: 500 })
     }).toPass({ timeout: 10_000 })
+
+    await page.locator('[name="from"]').fill('横浜駅前')
+    await page.locator('[name="to"]').fill('梅の木')
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'バスを検索' }).click()
+
+    await expect(page).toHaveURL(/\/search\?/)
     expect(pageErrors).toEqual([])
   })
 })
