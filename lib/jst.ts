@@ -35,14 +35,17 @@ function formatJstYmd(now: Date): string {
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
- * 曜日区分に当たる直近の日（今日を含む）を JST の YYYYMMDD で返す。検索はこの日付で運行日を引く。
- * 平日の祝日に休日を選べば当日になり、事業者が日付ごとに持つ祝日の例外がそのまま効く。
- * 祝日は平日・土曜として選ばない。
+ * 曜日区分から検索に使う日付を JST の YYYYMMDD で返す。検索はこの日付で運行日を引く。
+ * 今日がその区分なら今日。平日の祝日に休日を選べば当日になり、事業者が日付ごとに持つ祝日の例外が効く。
+ * 今日が違う区分なら代表日を選ぶ。休日は次の日曜（直近の祝日だと元日など特別なダイヤの日を拾う）、
+ * 平日・土曜は祝日を除いた直近の日。
  */
 export function getServiceDate(dayType: DayType, now: Date = new Date()): string {
-  for (let i = 0; i < 31; i++) {
+  if (getJstDayType(now) === dayType) return formatJstYmd(now)
+  for (let i = 1; i < 31; i++) {
     const day = new Date(now.getTime() + i * DAY_MS)
-    if (getJstDayType(day) === dayType) return formatJstYmd(day)
+    const isRepresentative = dayType === 'holiday' ? toJst(day).getUTCDay() === 0 : getJstDayType(day) === dayType
+    if (isRepresentative) return formatJstYmd(day)
   }
   throw new Error(`${dayType} に当たる日が 31 日以内に見つかりません`)
 }

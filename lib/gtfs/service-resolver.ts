@@ -2,6 +2,7 @@ import { and, eq, gte, lte } from 'drizzle-orm'
 import { getDb } from '../db/client'
 import { gtfsVersions, gtfsCalendar, gtfsCalendarDates } from '../db/schema'
 import { isJpHoliday } from '../jp-holidays'
+import { PROVIDER_CONFIGS } from '../providers/providers'
 
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
 
@@ -37,24 +38,10 @@ export async function getActiveVersionId(providerId: string): Promise<string | n
   return value
 }
 
-const exceptionPresenceCache = new Map<string, CacheEntry<boolean>>()
-
-// 版に calendar_dates が 1 行でもあるか。GTFS の事業者は祝日を日付ごとの例外で表すが、
-// 相鉄バス（ODPT から合成）は平日・土曜・休日の 3 種の calendar だけで例外を持たない
-async function hasCalendarExceptions(providerId: string, gtfsVersionId: string): Promise<boolean> {
-  const cacheKey = `${providerId}:${gtfsVersionId}`
-  const now = Date.now()
-  const cached = exceptionPresenceCache.get(cacheKey)
-  if (cached && cached.expiresAt > now) return cached.value
-  const rows = await getDb()
-    .select({ id: gtfsCalendarDates.id })
-    .from(gtfsCalendarDates)
-    .where(and(eq(gtfsCalendarDates.providerId, providerId), eq(gtfsCalendarDates.gtfsVersionId, gtfsVersionId)))
-    .limit(1)
-  const value = rows.length > 0
-  pruneExpired(exceptionPresenceCache)
-  exceptionPresenceCache.set(cacheKey, { value, expiresAt: now + CACHE_TTL_MS })
-  return value
+// 相鉄バス（ODPT から合成）は平日・土曜・休日の 3 種の calendar だけで、祝日の例外を持たない。
+// データの形から推測せず、事業者の定義で決める（無関係な例外が 1 行入っても判定が変わらないように）
+function holidaysInCalendarDates(providerId: string): boolean {
+  return PROVIDER_CONFIGS.find((p) => p.id === providerId)?.holidaysInCalendarDates ?? true
 }
 
 function isHolidayDate(dateStr: string): boolean {
@@ -75,8 +62,8 @@ export async function resolveServiceIds(
   const cached = serviceIdsCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return cached.value
 
-  // 例外を持たない事業者では、平日・土曜の祝日を日曜のダイヤとして扱う（祝日は休日ダイヤで走る）
-  const dowCol = isHolidayDate(dateStr) && !(await hasCalendarExceptions(providerId, gtfsVersionId))
+  // 祝日を例外で表さない事業者では、平日・土曜の祝日を日曜のダイヤとして扱う（祝日は休日ダイヤで走る）
+  const dowCol = isHolidayDate(dateStr) && !holidaysInCalendarDates(providerId)
     ? 'sunday'
     : getDowColumn(dateStr)
 

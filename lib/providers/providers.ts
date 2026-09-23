@@ -12,12 +12,17 @@ export interface ProviderConfig {
   shortName: string
   areaName: string
   icon: string
+  /**
+   * 祝日のダイヤを calendar_dates（日付ごとの例外）で表しているか。GTFS の事業者は true。
+   * false の事業者は例外を持たないので、平日・土曜の祝日を日曜のダイヤで扱う（lib/gtfs/service-resolver）
+   */
+  holidaysInCalendarDates: boolean
 }
 
 export const PROVIDER_CONFIGS: ProviderConfig[] = [
-  { id: PROVIDERS.NAGOYA_CITY_BUS, displayName: '名古屋市バス', shortName: '名古屋市バス', areaName: '名古屋市', icon: '🏯' },
-  { id: PROVIDERS.YOKOHAMA_CITY_BUS, displayName: '横浜市営バス', shortName: '横浜市営バス', areaName: '横浜市', icon: '⚓' },
-  { id: PROVIDERS.SOTETSU_BUS, displayName: '相鉄バス', shortName: '相鉄バス', areaName: '横浜市', icon: '🚌' },
+  { id: PROVIDERS.NAGOYA_CITY_BUS, displayName: '名古屋市バス', shortName: '名古屋市バス', areaName: '名古屋市', icon: '🏯', holidaysInCalendarDates: true },
+  { id: PROVIDERS.YOKOHAMA_CITY_BUS, displayName: '横浜市営バス', shortName: '横浜市営バス', areaName: '横浜市', icon: '⚓', holidaysInCalendarDates: true },
+  { id: PROVIDERS.SOTETSU_BUS, displayName: '相鉄バス', shortName: '相鉄バス', areaName: '横浜市', icon: '🚌', holidaysInCalendarDates: false },
 ]
 
 export type AreaId = 'nagoya' | 'yokohama'

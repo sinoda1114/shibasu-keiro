@@ -57,6 +57,11 @@ describe('getServiceDate（曜日区分から検索に使う日付を選ぶ）',
   it('今日が違う区分なら、その区分に当たる直近の日を返す（祝日は平日・土曜として選ばない）', () => {
     expect(getServiceDate('weekday', at('2026-10-12'))).toBe('20261013')
     expect(getServiceDate('holiday', at('2026-10-13'))).toBe('20261018')
+  })
+
+  it('平日に休日を選んだら直近の祝日ではなく次の日曜（元日などの特別な日を選ばない）', () => {
+    expect(getServiceDate('holiday', at('2026-12-28'))).toBe('20270103')
+    expect(getServiceDate('holiday', at('2026-11-02'))).toBe('20261108')
     expect(getServiceDate('weekday', at('2026-09-19'))).toBe('20260924')
     expect(getServiceDate('saturday', at('2028-04-28'))).toBe('20280506')
   })
