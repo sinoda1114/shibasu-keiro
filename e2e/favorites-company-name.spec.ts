@@ -76,8 +76,6 @@ test.describe('ルートお気に入りの会社名保存', () => {
   test('横浜駅西口→梅の木は相鉄バスとして保存される（APIモック）', async ({ page }) => {
     await mockDirectRoutes(page, buildRouteResults('相鉄バス', 'sotetsu_bus', 2))
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
-    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
-    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
@@ -94,8 +92,6 @@ test.describe('ルートお気に入りの会社名保存', () => {
   test('横浜駅前→高島町は横浜市営バスとして保存される（APIモック）', async ({ page }) => {
     await mockDirectRoutes(page, buildRouteResults('横浜市営バス', 'yokohama_city_bus', 2))
     await page.goto('/search?from=横浜駅前&to=高島町&area=yokohama')
-    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
-    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
@@ -109,6 +105,39 @@ test.describe('ルートお気に入りの会社名保存', () => {
     expect(favorites[0].providerDisplayName).not.toContain('・')
   })
 
+  test('検索結果の読み込み中は★を押せず、結果が届いた後は実際の社名で保存される（APIモック）', async ({ page }) => {
+    let releaseResponse!: () => void
+    const responseReleased = new Promise<void>((resolve) => { releaseResponse = resolve })
+    let markRequested!: () => void
+    const requested = new Promise<void>((resolve) => { markRequested = resolve })
+    await page.route('/api/routes/direct*', async (route) => {
+      markRequested()
+      await responseReleased
+      // 開発モードの StrictMode で中断された初回リクエストは fulfill できないため失敗を無視する
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: buildRouteResults('相鉄バス', 'sotetsu_bus', 2), date: '20240101' }),
+      }).catch(() => {})
+    })
+    await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
+    await requested
+
+    const addButton = page.getByRole('button', { name: 'お気に入りに追加' })
+    await expect(addButton).toBeDisabled()
+
+    releaseResponse()
+    await addButton.click()
+
+    const favorites = await page.evaluate(() => {
+      const data = localStorage.getItem('shibasu_keiro_favorites_v2')
+      return data ? JSON.parse(data) : []
+    })
+
+    expect(favorites).toHaveLength(1)
+    expect(favorites[0].providerDisplayName).toBe('相鉄バス')
+  })
+
   test('複数社混在時は最多便数の会社名が保存される（APIモック）', async ({ page }) => {
     const results = [
       ...buildRouteResults('横浜市営バス', 'yokohama_city_bus', 1),
@@ -116,8 +145,6 @@ test.describe('ルートお気に入りの会社名保存', () => {
     ]
     await mockDirectRoutes(page, results)
     await page.goto('/search?from=横浜駅西口&to=梅の木&area=yokohama')
-    // モック結果が state に反映されてから★を押す（反映前だとエリア既定の社名にフォールバックする）
-    await expect(page.getByText('次に乗れるバス')).toBeVisible()
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 

@@ -119,6 +119,11 @@ function SearchResultContent() {
   useEffect(() => {
     const date = getDayTypeDate(dayType)
     const controller = new AbortController()
+    // 中断されたリクエスト（StrictMode の再実行や条件変更）で読み込み完了扱いにすると、
+    // 後続リクエストの応答前に loading が false になりお気に入り追加を押せてしまう
+    const finishLoading = () => {
+      if (!controller.signal.aborted) setLoading(false)
+    }
 
     if (isNearbyMode && to) {
       fetch(
@@ -133,7 +138,7 @@ function SearchResultContent() {
         .catch((err: unknown) => {
           if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
         })
-        .finally(() => setLoading(false))
+        .finally(finishLoading)
     } else if (from && to) {
       fetch(
         `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&area=${encodeURIComponent(area)}`,
@@ -151,7 +156,7 @@ function SearchResultContent() {
         .catch((err: unknown) => {
           if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
         })
-        .finally(() => setLoading(false))
+        .finally(finishLoading)
     }
 
     return () => controller.abort()
@@ -196,6 +201,8 @@ function SearchResultContent() {
                 radius="md"
                 leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
                 aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
+                // 結果が届く前に追加すると実際の運行事業者ではなくエリア既定の社名で保存されてしまう
+                disabled={loading && !isFavorited}
                 onClick={() => {
                   if (isFavorited) {
                     const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
