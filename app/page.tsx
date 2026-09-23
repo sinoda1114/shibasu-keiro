@@ -30,7 +30,7 @@ import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
-import { getJstDayType, getJstTime, type DayType } from '@/lib/jst'
+import { getJstDayType, getJstTime, isDayType, type DayType } from '@/lib/jst'
 
 type TimeMode = 'depart' | 'arrive'
 type SearchMode = 'stop' | 'nearby'
@@ -274,7 +274,10 @@ function SearchPageContent() {
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
-  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? getJstDayType())
+  const [dayType, setDayType] = useState<DayType>(() => {
+    const fromUrl = searchParams.get('dayType')
+    return isDayType(fromUrl) ? fromUrl : getJstDayType()
+  })
   const [timeMode, setTimeMode] = useState<TimeMode>(() => (searchParams.get('timeMode') as TimeMode) ?? 'depart')
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 

@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/schema'
 import { GET as searchStops } from '@/app/api/stops/search/route'
 import { GET as directRoutes } from '@/app/api/routes/direct/route'
+import { GET as timetable } from '@/app/api/timetable/route'
 
 // API ルートを実際の SQLite（マイグレーション適用済み）に対してモックなしで叩く。
 // 対象は /api/stops/search と /api/routes/direct。E2E は API を page.route でモックしているため、
@@ -167,5 +168,17 @@ describe('/api/routes/direct（実 DB）', () => {
   it('date が YYYYMMDD でなければ 400', async () => {
     const { status } = await getJson(directRoutes, '/api/routes/direct?from=a&to=b&area=yokohama&date=2026-09-24')
     expect(status).toBe(400)
+  })
+})
+
+describe('/api/timetable（実 DB）', () => {
+  it('dayType が未知の値なら 400（日曜ダイヤを黙って返さない）', async () => {
+    const { status } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=bogus&provider=yokohama_city_bus')
+    expect(status).toBe(400)
+  })
+
+  it('正しい dayType なら 200', async () => {
+    const { status } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
+    expect(status).toBe(200)
   })
 })

@@ -2,7 +2,13 @@ import { isJpHoliday } from './jp-holidays'
 
 // 時刻表は JST で組まれているので、ブラウザのタイムゾーンに関係なく JST で「今」を決める
 
-export type DayType = 'weekday' | 'saturday' | 'holiday'
+export const DAY_TYPES = ['weekday', 'saturday', 'holiday'] as const
+export type DayType = (typeof DAY_TYPES)[number]
+
+/** URL のクエリなど外から来た値が曜日区分か */
+export function isDayType(value: unknown): value is DayType {
+  return typeof value === 'string' && (DAY_TYPES as readonly string[]).includes(value)
+}
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
@@ -20,12 +26,18 @@ export function getJstDayType(now: Date = new Date()): DayType {
   return 'weekday'
 }
 
+/** JST のその日の経過秒（0 時からの秒数） */
+export function getJstSecondsOfDay(now: Date = new Date()): number {
+  const jst = toJst(now)
+  return jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
+}
+
 export function getJstTime(now: Date = new Date()): { hour: number; minute: number } {
   const jst = toJst(now)
   return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
 }
 
-function formatJstYmd(now: Date): string {
+export function formatJstYYYYMMDD(now: Date = new Date()): string {
   const jst = toJst(now)
   const m = String(jst.getUTCMonth() + 1).padStart(2, '0')
   const d = String(jst.getUTCDate()).padStart(2, '0')
@@ -41,11 +53,11 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * 平日・土曜は祝日を除いた直近の日。
  */
 export function getServiceDate(dayType: DayType, now: Date = new Date()): string {
-  if (getJstDayType(now) === dayType) return formatJstYmd(now)
+  if (getJstDayType(now) === dayType) return formatJstYYYYMMDD(now)
   for (let i = 1; i < 31; i++) {
     const day = new Date(now.getTime() + i * DAY_MS)
     const isRepresentative = dayType === 'holiday' ? toJst(day).getUTCDay() === 0 : getJstDayType(day) === dayType
-    if (isRepresentative) return formatJstYmd(day)
+    if (isRepresentative) return formatJstYYYYMMDD(day)
   }
   throw new Error(`${dayType} に当たる日が 31 日以内に見つかりません`)
 }

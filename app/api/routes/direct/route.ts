@@ -7,9 +7,9 @@ import {
   getActiveVersionId,
   resolveServiceIds,
   secondsToHHMM,
-  todayYYYYMMDD,
 } from '@/lib/gtfs/service-resolver'
 import { getAreaConfig } from '@/lib/providers/providers'
+import { formatJstYYYYMMDD } from '@/lib/jst'
 
 export interface DirectRouteResult {
   tripId: string
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const fromName = searchParams.get('from')?.trim()
   const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
+  const dateStr = searchParams.get('date') ?? formatJstYYYYMMDD()
   const areaId = searchParams.get('area') ?? 'nagoya'
 
   if (!fromName || !toName) {

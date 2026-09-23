@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getJstDayType, getJstTime, getServiceDate } from '../jst'
+import { formatJstYYYYMMDD, getJstDayType, getJstSecondsOfDay, getJstTime, getServiceDate, isDayType } from '../jst'
 
 describe('getJstDayType', () => {
   it('UTC では金曜でも JST で土曜なら saturday', () => {
@@ -69,4 +69,23 @@ describe('getServiceDate（曜日区分から検索に使う日付を選ぶ）',
   it('JST の日付で判定する（UTC では前日の 15:30 でも JST では祝日当日）', () => {
     expect(getServiceDate('holiday', new Date('2026-10-11T15:30:00Z'))).toBe('20261012')
   })
+})
+
+describe('getJstSecondsOfDay', () => {
+  it('JST のその日の経過秒を返す（UTC では前日でも JST の日付で数える）', () => {
+    expect(getJstSecondsOfDay(new Date('2026-10-11T15:30:15Z'))).toBe(30 * 60 + 15)
+    expect(getJstSecondsOfDay(new Date('2026-10-12T01:05:00Z'))).toBe(10 * 3600 + 5 * 60)
+  })
+})
+
+describe('formatJstYYYYMMDD', () => {
+  it('JST の日付を YYYYMMDD で返す', () => {
+    expect(formatJstYYYYMMDD(new Date('2026-10-11T15:30:00Z'))).toBe('20261012')
+    expect(formatJstYYYYMMDD(new Date('2026-10-11T14:59:00Z'))).toBe('20261011')
+  })
+})
+
+describe('isDayType', () => {
+  it.each(['weekday', 'saturday', 'holiday'])('%s は曜日区分', (v) => expect(isDayType(v)).toBe(true))
+  it.each(['bogus', 'Weekday', '', null, undefined, 1])('%s は曜日区分でない', (v) => expect(isDayType(v)).toBe(false))
 })

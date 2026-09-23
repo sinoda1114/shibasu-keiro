@@ -25,7 +25,7 @@ import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
 import type { NearbyStop } from '@/app/api/routes/nearby/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getServiceDate } from '@/lib/jst'
+import { getJstSecondsOfDay, getServiceDate, isDayType } from '@/lib/jst'
 
 interface DirectRouteResult {
   tripId: string
@@ -47,9 +47,9 @@ const DAY_TYPE_LABELS: Record<string, string> = {
   holiday: '休日',
 }
 
-// URL の dayType が未知の値なら平日として扱う（従来の getDayTypeDate と同じ）
+// URL の dayType が未知の値なら平日として扱う
 function serviceDateOf(dayType: string): string {
-  return getServiceDate(dayType === 'saturday' || dayType === 'holiday' ? dayType : 'weekday')
+  return getServiceDate(isDayType(dayType) ? dayType : 'weekday')
 }
 
 function timeToSeconds(hhmm: string): number {
@@ -58,10 +58,7 @@ function timeToSeconds(hhmm: string): number {
 }
 
 function calcMinutesUntil(depSec: number): number | null {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  const nowSec = jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
-  const diff = Math.floor((depSec - nowSec) / 60)
+  const diff = Math.floor((depSec - getJstSecondsOfDay()) / 60)
   return diff >= 0 ? diff : null
 }
 
@@ -155,11 +152,7 @@ function SearchResultContent() {
   }, [from, to, lat, lon, isNearbyMode, dayType, area, requestKey])
 
   const date = serviceDateOf(dayType)
-  const nowSec = (() => {
-    const now = new Date()
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-    return jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
-  })()
+  const nowSec = getJstSecondsOfDay()
 
   const timeSeconds = timeToSeconds(time || '00:00')
   const isArriveMode = timeMode === 'arrive'
