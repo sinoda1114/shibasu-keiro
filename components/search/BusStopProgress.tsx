@@ -3,12 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Text, Loader, Center, rem } from '@mantine/core'
 import type { TripStop } from '@/app/api/routes/trip-stops/route'
-
-function getNowSeconds(): number {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  return jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
-}
+import { getJstSecondsOfDay } from '@/lib/jst'
 
 function getCurrentStopIndex(stops: TripStop[], nowSec: number): number {
   let idx = -1
@@ -40,7 +35,7 @@ interface Props {
 
 export function BusStopProgress({ tripId, fromStopName, toStopName, date, provider }: Props) {
   const [stopsData, setStopsData] = useState<{ key: string; stops: TripStop[] } | null>(null)
-  const [nowSec, setNowSec] = useState(getNowSeconds)
+  const [nowSec, setNowSec] = useState(getJstSecondsOfDay)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const currentKey = `${tripId}|${fromStopName}|${toStopName}|${date}|${provider}`
@@ -60,7 +55,7 @@ export function BusStopProgress({ tripId, fromStopName, toStopName, date, provid
   }, [tripId, fromStopName, toStopName, date, provider])
 
   useEffect(() => {
-    timerRef.current = setInterval(() => setNowSec(getNowSeconds()), 30_000)
+    timerRef.current = setInterval(() => setNowSec(getJstSecondsOfDay()), 30_000)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }

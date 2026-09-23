@@ -132,13 +132,3 @@ export function secondsToHHMM(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
-
-export function todayYYYYMMDD(): string {
-  const now = new Date()
-  // Vercel は UTC で動作するため JST (UTC+9) に変換
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  const y = jst.getUTCFullYear()
-  const m = String(jst.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(jst.getUTCDate()).padStart(2, '0')
-  return `${y}${m}${d}`
-}

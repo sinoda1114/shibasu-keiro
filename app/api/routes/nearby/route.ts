@@ -7,9 +7,9 @@ import {
   getActiveVersionId,
   resolveServiceIds,
   secondsToHHMM,
-  todayYYYYMMDD,
 } from '@/lib/gtfs/service-resolver'
 import { getAreaConfig } from '@/lib/providers/providers'
+import { formatJstYYYYMMDD } from '@/lib/jst'
 
 export interface NearbyTrip {
   tripId: string
@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
   const latStr = searchParams.get('lat')
   const lonStr = searchParams.get('lon')
   const toName = searchParams.get('to')?.trim()
-  const dateStr = searchParams.get('date') ?? todayYYYYMMDD()
+  const dateStr = searchParams.get('date') ?? formatJstYYYYMMDD()
   const areaId = searchParams.get('area') ?? 'nagoya'
 
   if (!latStr || !lonStr || !toName) {

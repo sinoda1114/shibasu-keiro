@@ -25,7 +25,7 @@ import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
 import type { NearbyStop } from '@/app/api/routes/nearby/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getServiceDate } from '@/lib/jst'
+import { getJstSecondsOfDay, getServiceDate, isDayType, type DayType } from '@/lib/jst'
 
 interface DirectRouteResult {
   tripId: string
@@ -41,15 +41,10 @@ interface DirectRouteResult {
   providerDisplayName: string
 }
 
-const DAY_TYPE_LABELS: Record<string, string> = {
+const DAY_TYPE_LABELS: Record<DayType, string> = {
   weekday: '平日',
   saturday: '土曜',
   holiday: '休日',
-}
-
-// URL の dayType が未知の値なら平日として扱う（従来の getDayTypeDate と同じ）
-function serviceDateOf(dayType: string): string {
-  return getServiceDate(dayType === 'saturday' || dayType === 'holiday' ? dayType : 'weekday')
 }
 
 function timeToSeconds(hhmm: string): number {
@@ -58,10 +53,7 @@ function timeToSeconds(hhmm: string): number {
 }
 
 function calcMinutesUntil(depSec: number): number | null {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  const nowSec = jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
-  const diff = Math.floor((depSec - nowSec) / 60)
+  const diff = Math.floor((depSec - getJstSecondsOfDay()) / 60)
   return diff >= 0 ? diff : null
 }
 
@@ -86,7 +78,9 @@ function SearchResultContent() {
   const lat = searchParams.get('lat')
   const lon = searchParams.get('lon')
   const isNearbyMode = !!(lat && lon)
-  const dayType = searchParams.get('dayType') ?? 'weekday'
+  // 未知の値は平日として扱う。検索に使う日付とバッジの表示を同じ値で揃える
+  const rawDayType = searchParams.get('dayType')
+  const dayType: DayType = isDayType(rawDayType) ? rawDayType : 'weekday'
   const time = searchParams.get('time') ?? ''
   const timeMode = searchParams.get('timeMode') ?? 'now'
   const area = searchParams.get('area') ?? 'nagoya'
@@ -117,7 +111,7 @@ function SearchResultContent() {
   const setIsFavorited = (value: boolean) => setFavoritedOverride({ key: favoriteKey, value })
 
   useEffect(() => {
-    const date = serviceDateOf(dayType)
+    const date = getServiceDate(dayType)
     const controller = new AbortController()
     const settle = (partial: Partial<Omit<SearchResponse, 'key'>>) => {
       if (controller.signal.aborted) return
@@ -154,12 +148,8 @@ function SearchResultContent() {
     return () => controller.abort()
   }, [from, to, lat, lon, isNearbyMode, dayType, area, requestKey])
 
-  const date = serviceDateOf(dayType)
-  const nowSec = (() => {
-    const now = new Date()
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-    return jst.getUTCHours() * 3600 + jst.getUTCMinutes() * 60 + jst.getUTCSeconds()
-  })()
+  const date = getServiceDate(dayType)
+  const nowSec = getJstSecondsOfDay()
 
   const timeSeconds = timeToSeconds(time || '00:00')
   const isArriveMode = timeMode === 'arrive'
@@ -220,7 +210,7 @@ function SearchResultContent() {
           </Group>
           <Group gap="xs">
             <Badge variant="light" color="gray" size="sm" radius="sm">
-              {DAY_TYPE_LABELS[dayType] ?? dayType}
+              {DAY_TYPE_LABELS[dayType]}
             </Badge>
             {time && (
               <Badge variant="light" color="gray" size="sm" radius="sm">

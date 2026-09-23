@@ -3,7 +3,7 @@ import { and, eq, inArray, isNotNull, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db/client'
 import { busStops, busStopTimes, busTrips, gtfsCalendar } from '@/lib/db/schema'
 import { getActiveVersionId } from '@/lib/gtfs/service-resolver'
-import type { DayType } from '@/lib/jst'
+import { isDayType, type DayType } from '@/lib/jst'
 
 export interface TimetableDirection {
   headsign: string
@@ -40,11 +40,15 @@ async function resolveServiceIdsByDayType(
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const stopName = searchParams.get('stopName')?.trim()
-  const dayType = (searchParams.get('dayType') ?? 'weekday') as DayType
+  const dayType = searchParams.get('dayType') ?? 'weekday'
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
 
   if (!stopName) {
     return NextResponse.json({ success: false, error: 'stopName は必須です' }, { status: 400 })
+  }
+  // 未知の値を日曜ダイヤとして黙って返さない
+  if (!isDayType(dayType)) {
+    return NextResponse.json({ success: false, error: 'dayType は weekday / saturday / holiday のいずれかです' }, { status: 400 })
   }
 
   const versionId = await getActiveVersionId(providerId)
