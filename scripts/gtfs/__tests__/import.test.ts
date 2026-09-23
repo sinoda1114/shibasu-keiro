@@ -14,7 +14,7 @@ const mockDb = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../lib/db/client', () => ({
-  db: mockDb,
+  getDb: () => mockDb,
 }))
 
 // parseGtfsFile をモック（実ファイルなし）

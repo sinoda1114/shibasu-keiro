@@ -1,5 +1,5 @@
 import { and, eq, inArray, notInArray } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import {
   gtfsVersions,
   busStops,
@@ -18,7 +18,7 @@ const KEEP_ARCHIVED = 1 // active 以外に残す世代数
  * active バージョンは削除しない。KEEP_ARCHIVED 件より古い archived を対象とする。
  */
 export async function cleanupOldVersions(providerId: string): Promise<void> {
-  const all = await db
+  const all = await getDb()
     .select({ id: gtfsVersions.id, status: gtfsVersions.status })
     .from(gtfsVersions)
     .where(eq(gtfsVersions.providerId, providerId))
@@ -34,19 +34,19 @@ export async function cleanupOldVersions(providerId: string): Promise<void> {
   console.log(`Cleaning up ${toDelete.length} old version(s): ${toDelete.join(', ')}`)
 
   // 関連データを FK 依存順に削除
-  await db.delete(busStopTimes).where(inArray(busStopTimes.gtfsVersionId, toDelete))
-  await db.delete(busTrips).where(inArray(busTrips.gtfsVersionId, toDelete))
-  await db.delete(busRoutes).where(inArray(busRoutes.gtfsVersionId, toDelete))
-  await db.delete(busStops).where(inArray(busStops.gtfsVersionId, toDelete))
-  await db.delete(gtfsCalendarDates).where(inArray(gtfsCalendarDates.gtfsVersionId, toDelete))
-  await db.delete(gtfsCalendar).where(inArray(gtfsCalendar.gtfsVersionId, toDelete))
-  await db.delete(gtfsImportJobs).where(
+  await getDb().delete(busStopTimes).where(inArray(busStopTimes.gtfsVersionId, toDelete))
+  await getDb().delete(busTrips).where(inArray(busTrips.gtfsVersionId, toDelete))
+  await getDb().delete(busRoutes).where(inArray(busRoutes.gtfsVersionId, toDelete))
+  await getDb().delete(busStops).where(inArray(busStops.gtfsVersionId, toDelete))
+  await getDb().delete(gtfsCalendarDates).where(inArray(gtfsCalendarDates.gtfsVersionId, toDelete))
+  await getDb().delete(gtfsCalendar).where(inArray(gtfsCalendar.gtfsVersionId, toDelete))
+  await getDb().delete(gtfsImportJobs).where(
     and(
       inArray(gtfsImportJobs.gtfsVersionId, toDelete),
       notInArray(gtfsImportJobs.status, ['running'])
     )
   )
-  await db.delete(gtfsVersions).where(inArray(gtfsVersions.id, toDelete))
+  await getDb().delete(gtfsVersions).where(inArray(gtfsVersions.id, toDelete))
 
   console.log(`✓ Cleaned up ${toDelete.length} old version(s)`)
 }

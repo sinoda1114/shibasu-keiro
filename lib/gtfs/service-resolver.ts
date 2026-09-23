@@ -1,5 +1,5 @@
 import { and, eq, gte, lte } from 'drizzle-orm'
-import { db } from '../db/client'
+import { getDb } from '../db/client'
 import { gtfsVersions, gtfsCalendar, gtfsCalendarDates } from '../db/schema'
 
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
@@ -24,7 +24,7 @@ export async function getActiveVersionId(providerId: string): Promise<string | n
   const cached = versionCache.get(providerId)
   if (cached && cached.expiresAt > now) return cached.value
 
-  const rows = await db
+  const rows = await getDb()
     .select({ id: gtfsVersions.id })
     .from(gtfsVersions)
     .where(and(eq(gtfsVersions.providerId, providerId), eq(gtfsVersions.status, 'active')))
@@ -53,7 +53,7 @@ export async function resolveServiceIds(
   const dowCol = getDowColumn(dateStr)
 
   // 1. calendar から全 service_id を取得し、曜日カラムで JS 側フィルタ
-  const calRows = await db
+  const calRows = await getDb()
     .select({
       serviceId: gtfsCalendar.serviceId,
       monday: gtfsCalendar.monday,
@@ -79,7 +79,7 @@ export async function resolveServiceIds(
   )
 
   // 2. calendar_dates で当日の例外を適用
-  const exRows = await db
+  const exRows = await getDb()
     .select({ serviceId: gtfsCalendarDates.serviceId, exceptionType: gtfsCalendarDates.exceptionType })
     .from(gtfsCalendarDates)
     .where(

@@ -1,14 +1,14 @@
-import { db } from '../lib/db/client'
+import { getDb } from '../lib/db/client'
 import { busStops, busRoutes, busTrips, busStopTimes, gtfsVersions, gtfsImportJobs } from '../lib/db/schema'
 import { sql } from 'drizzle-orm'
 
 async function main() {
-  const [stops] = await db.select({ count: sql<number>`count(*)` }).from(busStops)
-  const [routes] = await db.select({ count: sql<number>`count(*)` }).from(busRoutes)
-  const [trips] = await db.select({ count: sql<number>`count(*)` }).from(busTrips)
-  const [stopTimes] = await db.select({ count: sql<number>`count(*)` }).from(busStopTimes)
-  const versions = await db.select().from(gtfsVersions).limit(5)
-  const jobs = await db.select().from(gtfsImportJobs).limit(5)
+  const [stops] = await getDb().select({ count: sql<number>`count(*)` }).from(busStops)
+  const [routes] = await getDb().select({ count: sql<number>`count(*)` }).from(busRoutes)
+  const [trips] = await getDb().select({ count: sql<number>`count(*)` }).from(busTrips)
+  const [stopTimes] = await getDb().select({ count: sql<number>`count(*)` }).from(busStopTimes)
+  const versions = await getDb().select().from(gtfsVersions).limit(5)
+  const jobs = await getDb().select().from(gtfsImportJobs).limit(5)
 
   console.log('stops     :', stops.count)
   console.log('routes    :', routes.count)

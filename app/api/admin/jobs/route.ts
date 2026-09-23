@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { eq, desc } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { gtfsImportJobs } from '@/lib/db/schema'
 
 export interface ImportJob {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
   const limit = Math.min(Number(searchParams.get('limit') ?? '10'), 100)
 
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(gtfsImportJobs)
     .where(eq(gtfsImportJobs.providerId, providerId))

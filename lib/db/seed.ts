@@ -1,8 +1,8 @@
-import { db } from './client'
+import { getDb } from './client'
 import { providers } from './schema'
 
 async function seed() {
-  await db.insert(providers).values({
+  await getDb().insert(providers).values({
     id: 'nagoya_city_bus',
     name: 'nagoya_city_bus',
     displayName: '名古屋市バス',

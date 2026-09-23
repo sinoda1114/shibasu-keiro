@@ -1,5 +1,5 @@
 import { and, eq, ne } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import { gtfsVersions } from '../../lib/db/schema'
 
 /**
@@ -8,7 +8,7 @@ import { gtfsVersions } from '../../lib/db/schema'
  */
 export async function activateVersion(versionId: string, providerId: string): Promise<void> {
   // 旧 active を archived に変更
-  await db
+  await getDb()
     .update(gtfsVersions)
     .set({ status: 'archived' })
     .where(
@@ -19,7 +19,7 @@ export async function activateVersion(versionId: string, providerId: string): Pr
     )
 
   // staging → active に昇格
-  await db
+  await getDb()
     .update(gtfsVersions)
     .set({ status: 'active', importedAt: new Date().toISOString() })
     .where(

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, between, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { busRoutes, busStops, busStopTimes, busTrips } from '@/lib/db/schema'
 import {
   getActiveVersionId,
@@ -64,7 +64,7 @@ async function queryOneProvider(
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
   if (serviceIds.length === 0) return []
 
-  const nearbyRaw = await db
+  const nearbyRaw = await getDb()
     .selectDistinct({
       stopId: busStops.stopId,
       stopName: busStops.stopName,
@@ -95,7 +95,7 @@ async function queryOneProvider(
 
   if (nearbyStops.length === 0) return []
 
-  const toStops = await db
+  const toStops = await getDb()
     .select({ stopId: busStops.stopId })
     .from(busStops)
     .where(
@@ -123,7 +123,7 @@ async function queryOneProvider(
 
   const allFromIds = nearbyStops.map((s) => s.stopId)
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       fromStopId: fromSt.stopId,
       tripId: fromSt.tripId,

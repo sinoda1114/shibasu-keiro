@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db } from '../../lib/db/client'
+import { getDb } from '../../lib/db/client'
 import {
   providers,
   gtfsVersions,
@@ -50,7 +50,7 @@ async function batchInsert<T extends object>(
     let lastErr: unknown
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        await db.insert(table).values(batch)
+        await getDb().insert(table).values(batch)
         lastErr = null
         break
       } catch (err) {
@@ -83,13 +83,13 @@ export async function importGtfs(
   const now = new Date().toISOString()
 
   // providers テーブルにプロバイダーが存在しなければ挿入
-  const existing = await db
+  const existing = await getDb()
     .select()
     .from(providers)
     .where(eq(providers.id, providerId))
     .limit(1)
   if (existing.length === 0) {
-    await db.insert(providers).values({
+    await getDb().insert(providers).values({
       id: providerId,
       name: providerId,
       displayName,
@@ -103,7 +103,7 @@ export async function importGtfs(
   }
 
   // ジョブ開始
-  await db.insert(gtfsImportJobs).values({
+  await getDb().insert(gtfsImportJobs).values({
     id: jobId,
     providerId,
     gtfsVersionId: versionId,
@@ -115,7 +115,7 @@ export async function importGtfs(
 
   try {
     // バージョン登録（status は staging のまま）
-    await db.insert(gtfsVersions).values({
+    await getDb().insert(gtfsVersions).values({
       id: versionId,
       providerId,
       versionName,
@@ -243,7 +243,7 @@ export async function importGtfs(
     console.log(` ${calendarDates.length} calendar_dates`)
 
     // ジョブ完了（status は staging のまま — activate は呼び出し側で行う）
-    await db
+    await getDb()
       .update(gtfsImportJobs)
       .set({ status: 'completed', finishedAt: new Date().toISOString() })
       .where(eq(gtfsImportJobs.id, jobId))
@@ -252,20 +252,20 @@ export async function importGtfs(
     return versionId
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db
+    await getDb()
       .update(gtfsImportJobs)
       .set({ status: 'failed', finishedAt: new Date().toISOString(), errorMessage: msg })
       .where(eq(gtfsImportJobs.id, jobId))
 
     // 途中まで書き込んだゴミデータを FK 依存順に削除する
     try {
-      await db.delete(busStopTimes).where(eq(busStopTimes.gtfsVersionId, versionId))
-      await db.delete(busTrips).where(eq(busTrips.gtfsVersionId, versionId))
-      await db.delete(busRoutes).where(eq(busRoutes.gtfsVersionId, versionId))
-      await db.delete(busStops).where(eq(busStops.gtfsVersionId, versionId))
-      await db.delete(gtfsCalendarDates).where(eq(gtfsCalendarDates.gtfsVersionId, versionId))
-      await db.delete(gtfsCalendar).where(eq(gtfsCalendar.gtfsVersionId, versionId))
-      await db.delete(gtfsVersions).where(eq(gtfsVersions.id, versionId))
+      await getDb().delete(busStopTimes).where(eq(busStopTimes.gtfsVersionId, versionId))
+      await getDb().delete(busTrips).where(eq(busTrips.gtfsVersionId, versionId))
+      await getDb().delete(busRoutes).where(eq(busRoutes.gtfsVersionId, versionId))
+      await getDb().delete(busStops).where(eq(busStops.gtfsVersionId, versionId))
+      await getDb().delete(gtfsCalendarDates).where(eq(gtfsCalendarDates.gtfsVersionId, versionId))
+      await getDb().delete(gtfsCalendar).where(eq(gtfsCalendar.gtfsVersionId, versionId))
+      await getDb().delete(gtfsVersions).where(eq(gtfsVersions.id, versionId))
     } catch (cleanupErr) {
       console.error('クリーンアップ中にエラーが発生しました:', cleanupErr)
     }

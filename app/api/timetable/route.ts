@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, inArray, isNotNull, or } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { busStops, busStopTimes, busTrips, gtfsCalendar } from '@/lib/db/schema'
 import { getActiveVersionId } from '@/lib/gtfs/service-resolver'
 
@@ -30,7 +30,7 @@ async function resolveServiceIdsByDayType(
       ? eq(gtfsCalendar.saturday, 1)
       : eq(gtfsCalendar.sunday, 1)
 
-  const rows = await db
+  const rows = await getDb()
     .select({ serviceId: gtfsCalendar.serviceId })
     .from(gtfsCalendar)
     .where(and(eq(gtfsCalendar.providerId, providerId), eq(gtfsCalendar.gtfsVersionId, gtfsVersionId), dayFilter))
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   }
 
   const [stops, serviceIds] = await Promise.all([
-    db
+    getDb()
       .select({ stopId: busStops.stopId })
       .from(busStops)
       .where(and(eq(busStops.providerId, providerId), eq(busStops.gtfsVersionId, versionId), eq(busStops.stopName, stopName))),
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 
   const stopIds = stops.map((s) => s.stopId)
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       headsign: busTrips.tripHeadsign,
       departureTimeSeconds: busStopTimes.departureTimeSeconds,

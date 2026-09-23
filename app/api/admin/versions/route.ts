@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { gtfsVersions } from '@/lib/db/schema'
 
 export interface VersionWithCounts {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const providerId = searchParams.get('provider') ?? 'nagoya_city_bus'
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: gtfsVersions.id,
       versionName: gtfsVersions.versionName,

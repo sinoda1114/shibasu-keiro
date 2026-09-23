@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, like, sql, inArray } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { getDb } from '@/lib/db/client'
 import { busStops, gtfsVersions } from '@/lib/db/schema'
 import { getAreaConfig } from '@/lib/providers/providers'
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   // area.providerIds は常に非空。
   const providerIds = area.providerIds
 
-  const rows = await db
+  const rows = await getDb()
     .select({ stopName: busStops.stopName })
     .from(busStops)
     .innerJoin(gtfsVersions, and(

@@ -1,4 +1,4 @@
-import { db } from '../lib/db/client'
+import { getDb } from '../lib/db/client'
 import {
   providers, gtfsVersions, gtfsImportJobs,
   busStops, busRoutes, busTrips, busStopTimes,
@@ -9,27 +9,27 @@ async function main() {
   console.log('Clearing all GTFS data...')
 
   // FK 依存順に削除
-  await db.delete(busStopTimes)
+  await getDb().delete(busStopTimes)
   console.log('  bus_stop_times cleared')
-  await db.delete(busTrips)
+  await getDb().delete(busTrips)
   console.log('  bus_trips cleared')
-  await db.delete(busRoutes)
+  await getDb().delete(busRoutes)
   console.log('  bus_routes cleared')
-  await db.delete(busStops)
+  await getDb().delete(busStops)
   console.log('  bus_stops cleared')
-  await db.delete(gtfsCalendarDates)
+  await getDb().delete(gtfsCalendarDates)
   console.log('  gtfs_calendar_dates cleared')
-  await db.delete(gtfsCalendar)
+  await getDb().delete(gtfsCalendar)
   console.log('  gtfs_calendar cleared')
-  await db.delete(gtfsImportJobs)
+  await getDb().delete(gtfsImportJobs)
   console.log('  gtfs_import_jobs cleared')
-  await db.delete(gtfsVersions)
+  await getDb().delete(gtfsVersions)
   console.log('  gtfs_versions cleared')
-  await db.delete(providers)
+  await getDb().delete(providers)
   console.log('  providers cleared')
 
   // providers に nagoya_city_bus を再投入
-  await db.insert(providers).values({
+  await getDb().insert(providers).values({
     id: 'nagoya_city_bus',
     name: 'nagoya_city_bus',
     displayName: '名古屋市バス',
