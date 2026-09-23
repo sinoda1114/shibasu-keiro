@@ -4,9 +4,9 @@ import { useEffect, useReducer, useState } from 'react'
 import { Stack, Title, SegmentedControl, Select, Text, Loader, Center, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
-import type { DayType, TimetableDirection } from '@/app/api/timetable/route'
+import type { TimetableDirection } from '@/app/api/timetable/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
-import { getJstDayType, getJstTime } from '@/lib/jst'
+import { getJstDayType, getJstTime, type DayType } from '@/lib/jst'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },

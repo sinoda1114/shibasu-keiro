@@ -28,7 +28,11 @@ function jstParts(date: Date): { weekday: string; hh: string; mm: string } {
     minute: '2-digit',
     hourCycle: 'h23',
   }).formatToParts(date)
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  const get = (type: string) => {
+    const value = parts.find((p) => p.type === type)?.value
+    if (value === undefined) throw new Error(`JST の ${type} を取り出せませんでした`)
+    return value
+  }
   return { weekday: get('weekday'), hh: get('hour'), mm: get('minute') }
 }
 
