@@ -23,15 +23,13 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      // file::memory: はプロセスごとに別の DB になるため、db:migrate を適用した
-      // プロセスとこの dev サーバーが別々の空 DB を見て "no such table" で落ちる。
-      // CI では .github/ci.env の file:ci.db を共有する。
-      //
-      // 外部の TURSO_DATABASE_URL を尊重するのは CI に限る。ローカルは常に隔離する。
-      // direnv 等で本番 Turso の URL を export している手元だと、
-      // 無条件に尊重すると E2E が本番 DB に接続してしまうため。
-      TURSO_DATABASE_URL: process.env.CI
-        ? (process.env.TURSO_DATABASE_URL ?? 'file:ci.db')
+      // E2E の dev サーバーはリモート DB（本番 Turso）に接続しない。file: の URL だけを受け付け、
+      // それ以外（libsql:// / https:// / 未設定）は file::memory: に隔離する。CI 判定には頼らない
+      // （CI=false も文字列として真になる。本番の資格情報があるのはむしろ CI 側）。
+      // CI は .github/ci.env の file:ci.db を db:migrate と共有する。file::memory: はプロセスごとに
+      // 別の DB になるため、マイグレーションを当てたプロセスと共有できない。
+      TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL?.startsWith('file:')
+        ? process.env.TURSO_DATABASE_URL
         : 'file::memory:',
     },
   },
