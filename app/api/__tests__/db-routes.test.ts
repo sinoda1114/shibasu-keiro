@@ -15,7 +15,8 @@ import { GET as timetable } from '@/app/api/timetable/route'
 
 // API ルートを実際の SQLite（マイグレーション適用済み）に対してモックなしで叩く。
 // 対象は /api/stops/search・/api/routes/direct・/api/timetable。E2E は API を page.route でモックしているため、
-// これらのクエリはここで守る。nearby / trip-stops は未検証のまま。
+// これらのクエリはここで守る。nearby は有効な版が無いときの扱いだけ routes-no-data.test.ts で検証し、
+// trip-stops は未検証のまま。
 
 const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'

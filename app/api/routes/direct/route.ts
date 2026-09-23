@@ -10,6 +10,7 @@ import {
 } from '@/lib/gtfs/service-resolver'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { formatJstYYYYMMDD } from '@/lib/jst'
+import { collectProviderResults } from '@/app/api/routes/provider-results'
 
 export interface DirectRouteResult {
   tripId: string
@@ -30,9 +31,10 @@ async function queryOneProvider(
   fromName: string,
   toName: string,
   dateStr: string
-): Promise<DirectRouteResult[]> {
+): Promise<DirectRouteResult[] | null> {
+  // 版が無い（インポートの障害）ときは null。便が無い空配列と区別する
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) return []
+  if (!versionId) return null
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
   if (serviceIds.length === 0) return []
@@ -170,11 +172,14 @@ export async function GET(req: NextRequest) {
   }
 
   const area = getAreaConfig(areaId)
-  const results = await Promise.all(
-    area.providerIds.map((pid) => queryOneProvider(pid, fromName, toName, dateStr))
+  const outcome = collectProviderResults(
+    'api/routes/direct',
+    area.providerIds,
+    await Promise.all(area.providerIds.map((pid) => queryOneProvider(pid, fromName, toName, dateStr)))
   )
+  if (!outcome.ok) return outcome.response
 
-  const data = results
+  const data = outcome.results
     .flat()
     .sort((a, b) => a.departureSeconds - b.departureSeconds)
 
@@ -183,7 +188,11 @@ export async function GET(req: NextRequest) {
     ? await checkSotetsuStopsExist(fromName, toName)
     : false
 
+  // 一部の事業者が欠けた結果は、データが戻った後も CDN に残り続けないようキャッシュしない
+  const cacheControl = outcome.hasMissingProvider
+    ? 'no-store'
+    : 's-maxage=3600, stale-while-revalidate=86400'
   return NextResponse.json({ success: true, data, date: dateStr, sotetsuStopsExist }, {
-    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+    headers: { 'Cache-Control': cacheControl },
   })
 }

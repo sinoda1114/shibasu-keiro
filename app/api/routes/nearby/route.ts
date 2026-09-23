@@ -10,6 +10,7 @@ import {
 } from '@/lib/gtfs/service-resolver'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { formatJstYYYYMMDD } from '@/lib/jst'
+import { collectProviderResults } from '@/app/api/routes/provider-results'
 
 export interface NearbyTrip {
   tripId: string
@@ -57,9 +58,10 @@ async function queryOneProvider(
   lon: number,
   toName: string,
   dateStr: string
-): Promise<NearbyStop[]> {
+): Promise<NearbyStop[] | null> {
+  // 版が無い（インポートの障害）ときは null。便が無い空配列と区別する
   const versionId = await getActiveVersionId(providerId)
-  if (!versionId) return []
+  if (!versionId) return null
 
   const serviceIds = await resolveServiceIds(providerId, versionId, dateStr)
   if (serviceIds.length === 0) return []
@@ -248,13 +250,16 @@ export async function GET(req: NextRequest) {
   }
 
   const area = getAreaConfig(areaId)
-  const results = await Promise.all(
-    area.providerIds.map((pid) => queryOneProvider(pid, lat, lon, toName, dateStr))
+  const outcome = collectProviderResults(
+    'api/routes/nearby',
+    area.providerIds,
+    await Promise.all(area.providerIds.map((pid) => queryOneProvider(pid, lat, lon, toName, dateStr)))
   )
+  if (!outcome.ok) return outcome.response
 
   // 全プロバイダーの NearbyStop をマージ: 同stopName は distanceM が小さい方を代表に
   const merged = new Map<string, NearbyStop>()
-  for (const stops of results) {
+  for (const stops of outcome.results) {
     for (const stop of stops) {
       const existing = merged.get(stop.stopName)
       if (!existing) {
