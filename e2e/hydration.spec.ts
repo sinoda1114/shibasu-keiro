@@ -146,4 +146,17 @@ test.describe('ハイドレーション不一致', () => {
     await expect(page.getByText('横浜駅西口')).toBeVisible()
     expect(errors).toEqual([])
   })
+
+  test('ブラウザの時計がサーバーとずれていても時刻表ページで不一致が起きない', async ({ page }) => {
+    const errors = collectHydrationErrors(page)
+    const browserNow = clockSkewedFromServer()
+    await page.clock.setFixedTime(browserNow)
+
+    await page.goto('/timetable?stopName=栄')
+
+    const dayTypeLabel = { weekday: '平日', saturday: '土曜', holiday: '休日' }[dayTypeOf(browserNow)]
+    await expect(page.getByRole('radio', { name: dayTypeLabel })).toBeChecked()
+    expect(errors).toEqual([])
+  })
 })
+

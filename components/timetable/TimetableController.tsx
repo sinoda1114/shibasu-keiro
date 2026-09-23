@@ -5,6 +5,7 @@ import { Stack, Title, SegmentedControl, Select, Text, Loader, Center, Alert } f
 import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
 import type { DayType, TimetableDirection } from '@/app/api/timetable/route'
+import { useIsHydrated } from '@/lib/use-is-hydrated'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
@@ -69,6 +70,7 @@ function getNowJST(): { hour: number; minute: number } {
 }
 
 export function TimetableController({ stopName, provider, initialHeadsign }: TimetableControllerProps) {
+  const isHydrated = useIsHydrated()
   const [dayType, setDayType] = useState<DayType>(getTodayDayType)
   const [currentTime] = useState(getNowJST)
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
@@ -107,7 +109,8 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
       <SegmentedControl
         fullWidth
         data={DAY_TYPE_OPTIONS}
-        value={dayType}
+        // 今日の曜日区分はサーバーとブラウザで食い違いうるので、ハイドレーション後に選択を出す
+        value={isHydrated ? dayType : ''}
         onChange={(v) => setDayType(v as DayType)}
       />
 
