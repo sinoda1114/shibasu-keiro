@@ -38,6 +38,7 @@ shibasu-keiro（`shibasu-keiro.vercel.app`）の AI 向けプロジェクト指�
 ## dev 規律
 
 - dev サーバ起動中にビルド成果物を消したり本番ビルドを実行しない（壊れる）。dev は 1 つ。
+- E2E（`pnpm e2e`）は専用ポート 3100 で dev サーバーを自前で起動し、`.env.local` の DB ではなく隔離した DB に繋ぐ。`pnpm dev` を起動中なら止めてから実行する（同じ `.next` を取り合って起動できない）。worktree を並行させるときは `E2E_PORT` でポートを変える。
 - AI 検証は `tsc` / `eslint` / `test` で行う（手動確認をユーザーに丸投げしない）。
 - `.env.local` は触らない・中身を出力しない（本番 env は Vercel ダッシュボードが正本）。
 - シークレット（API キー・トークン）はログ / 出力に出さない。必要なら redact する。

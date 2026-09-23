@@ -4,21 +4,15 @@ import { useEffect, useReducer, useState } from 'react'
 import { Stack, Title, SegmentedControl, Select, Text, Loader, Center, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { TimetableView, type TimetableEntry } from './TimetableView'
-import type { DayType, TimetableDirection } from '@/app/api/timetable/route'
+import type { TimetableDirection } from '@/app/api/timetable/route'
 import { useIsHydrated } from '@/lib/use-is-hydrated'
+import { getJstDayType, getJstTime, type DayType } from '@/lib/jst'
 
 const DAY_TYPE_OPTIONS = [
   { label: '平日', value: 'weekday' },
   { label: <Text size="sm" fw={600} c="blue.7" component="span">土曜</Text>, value: 'saturday' },
   { label: <Text size="sm" fw={600} c="red.7" component="span">休日</Text>, value: 'holiday' },
 ]
-
-function getTodayDayType(): DayType {
-  const day = new Date().getDay()
-  if (day === 0) return 'holiday'
-  if (day === 6) return 'saturday'
-  return 'weekday'
-}
 
 interface TimetableControllerProps {
   stopName: string
@@ -63,16 +57,10 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   }
 }
 
-function getNowJST(): { hour: number; minute: number } {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  return { hour: jst.getUTCHours(), minute: jst.getUTCMinutes() }
-}
-
 export function TimetableController({ stopName, provider, initialHeadsign }: TimetableControllerProps) {
   const isHydrated = useIsHydrated()
-  const [dayType, setDayType] = useState<DayType>(getTodayDayType)
-  const [currentTime] = useState(getNowJST)
+  const [dayType, setDayType] = useState<DayType>(() => getJstDayType())
+  const [currentTime] = useState(() => getJstTime())
   const [{ loading, error, directions, directionIndex }, dispatch] = useReducer(
     fetchReducer,
     initialFetchState,

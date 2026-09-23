@@ -29,23 +29,14 @@ import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { readLocalStorage, writeLocalStorage } from '@/lib/safe-storage'
 import { AreaSelector } from '@/components/search/AreaSelector'
 import { DEFAULT_AREA_ID } from '@/lib/providers/providers'
+import { getJstDayType, getJstTime, type DayType } from '@/lib/jst'
 
-type DayType = 'weekday' | 'saturday' | 'holiday'
 type TimeMode = 'depart' | 'arrive'
 type SearchMode = 'stop' | 'nearby'
 
-function getTodayDayType(): DayType {
-  const day = new Date().getDay()
-  if (day === 0) return 'holiday'
-  if (day === 6) return 'saturday'
-  return 'weekday'
-}
-
 function getNowTime(): string {
-  const now = new Date()
-  const hh = String(now.getHours()).padStart(2, '0')
-  const mm = String(now.getMinutes()).padStart(2, '0')
-  return `${hh}:${mm}`
+  const { hour, minute } = getJstTime()
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
 async function fetchStopSuggestions(query: string, area: string): Promise<string[]> {
@@ -282,7 +273,7 @@ function SearchPageContent() {
   const [toData, setToData] = useState<string[]>([])
   const [fromLoading, setFromLoading] = useState(false)
   const [toLoading, setToLoading] = useState(false)
-  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? getTodayDayType())
+  const [dayType, setDayType] = useState<DayType>(() => (searchParams.get('dayType') as DayType) ?? getJstDayType())
   const [timeMode, setTimeMode] = useState<TimeMode>(() => (searchParams.get('timeMode') as TimeMode) ?? 'depart')
   const [specifiedTime, setSpecifiedTime] = useState(() => searchParams.get('time') ?? getNowTime())
 

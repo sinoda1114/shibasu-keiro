@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../lib/db/client'
+import { redactUrl } from '../../lib/redact-url'
 import {
   providers,
   gtfsVersions,
@@ -78,6 +79,8 @@ export async function importGtfs(
   sourceHash?: string
 ): Promise<string> {
   const { providerId, displayName, areaName, sourceUrl } = config
+  // DB には API キー（問い合わせ文字列）を含まない形で保存する。ダウンロードには元の URL を使う
+  const storedSourceUrl = redactUrl(sourceUrl)
   const versionId = generateId()
   const jobId = generateId()
   const now = new Date().toISOString()
@@ -94,7 +97,7 @@ export async function importGtfs(
       name: providerId,
       displayName,
       areaName,
-      gtfsSourceUrl: sourceUrl,
+      gtfsSourceUrl: storedSourceUrl,
       isActive: 1,
       createdAt: now,
       updatedAt: now,
@@ -109,7 +112,7 @@ export async function importGtfs(
     gtfsVersionId: versionId,
     status: 'running',
     startedAt: now,
-    sourceUrl,
+    sourceUrl: storedSourceUrl,
     createdAt: now,
   })
 
@@ -119,7 +122,7 @@ export async function importGtfs(
       id: versionId,
       providerId,
       versionName,
-      sourceUrl,
+      sourceUrl: storedSourceUrl,
       sourceHash: sourceHash ?? null,
       status: 'staging',
       createdAt: now,

@@ -1,4 +1,5 @@
 import { getDb } from '../lib/db/client'
+import { redactUrl } from '../lib/redact-url'
 import {
   providers, gtfsVersions, gtfsImportJobs,
   busStops, busRoutes, busTrips, busStopTimes,
@@ -34,7 +35,7 @@ async function main() {
     name: 'nagoya_city_bus',
     displayName: '名古屋市バス',
     areaName: '名古屋市',
-    gtfsSourceUrl: process.env.NAGOYA_GTFS_URL ?? null,
+    gtfsSourceUrl: process.env.NAGOYA_GTFS_URL ? redactUrl(process.env.NAGOYA_GTFS_URL) : null,
     isActive: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

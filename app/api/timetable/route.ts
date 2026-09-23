@@ -3,8 +3,7 @@ import { and, eq, inArray, isNotNull, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db/client'
 import { busStops, busStopTimes, busTrips, gtfsCalendar } from '@/lib/db/schema'
 import { getActiveVersionId } from '@/lib/gtfs/service-resolver'
-
-export type DayType = 'weekday' | 'saturday' | 'holiday'
+import type { DayType } from '@/lib/jst'
 
 export interface TimetableDirection {
   headsign: string
