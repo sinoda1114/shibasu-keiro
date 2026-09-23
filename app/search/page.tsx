@@ -17,6 +17,7 @@ import {
   rem,
 } from '@mantine/core'
 import { IconAlertCircle, IconBus, IconStar, IconClock, IconMapPin, IconExternalLink } from '@tabler/icons-react'
+import { notifications } from '@mantine/notifications'
 import { addFavorite, removeFavorite, getFavorites } from '@/lib/favorites/local-storage'
 import { getAreaConfig } from '@/lib/providers/providers'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
@@ -42,6 +43,14 @@ const DAY_TYPE_LABELS: Record<string, string> = {
   weekday: '平日',
   saturday: '土曜',
   holiday: '休日',
+}
+
+// localStorage が遮断・容量超過のとき。★の見た目だけ変えると保存されたと誤解させるので、変えずに知らせる
+function notifyFavoriteUnsaved() {
+  notifications.show({
+    color: 'red',
+    message: 'この環境ではお気に入りを保存できません。ブラウザの設定でサイトデータの保存が無効になっている可能性があります。',
+  })
 }
 
 function formatYYYYMMDD(d: Date): string {
@@ -198,7 +207,9 @@ function SearchResultContent() {
                 onClick={() => {
                   if (isFavorited) {
                     const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
-                    if (!target || removeFavorite(target.id)) setIsFavorited(false)
+                    const removed = target ? removeFavorite(target.id) : true
+                    if (removed) setIsFavorited(false)
+                    else notifyFavoriteUnsaved()
                   } else {
                     const providerCounts = new Map<string, number>()
                     for (const r of results) {
@@ -207,6 +218,7 @@ function SearchResultContent() {
                     const topProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
                     const providerLabel = topProvider ?? areaConfig.providerDisplayNames[0]
                     if (addFavorite(from, to, area, providerLabel)) setIsFavorited(true)
+                    else notifyFavoriteUnsaved()
                   }
                 }}
                 style={{ flexShrink: 0 }}

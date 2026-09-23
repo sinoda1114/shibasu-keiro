@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { addFavorite, getFavorites, removeFavorite, reverseFavorite } from '../local-storage'
 
 // localStorageをモック
@@ -12,6 +12,8 @@ vi.stubGlobal('localStorage', {
   },
   removeItem: (k: string) => { delete storage[k] },
 })
+
+afterEach(() => { failWrites = false })
 
 describe('addFavorite', () => {
   beforeEach(() => { Object.keys(storage).forEach(k => delete storage[k]) })
@@ -55,10 +57,7 @@ describe('addFavorite', () => {
 })
 
 describe('書き込みに失敗したとき', () => {
-  beforeEach(() => {
-    Object.keys(storage).forEach(k => delete storage[k])
-    failWrites = false
-  })
+  beforeEach(() => { Object.keys(storage).forEach(k => delete storage[k]) })
 
   it('addFavorite は例外を投げずに null を返す', () => {
     failWrites = true

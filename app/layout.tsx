@@ -3,6 +3,7 @@ import '@mantine/dates/styles.css'
 import '@mantine/notifications/styles.css'
 import type { Metadata, Viewport } from 'next'
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core'
+import { Notifications } from '@mantine/notifications'
 import { AppShellLayout } from '@/components/layout/AppShellLayout'
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration'
 
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <MantineProvider>
+          <Notifications position="top-center" />
           <AppShellLayout>{children}</AppShellLayout>
         </MantineProvider>
         <ServiceWorkerRegistration />

@@ -24,7 +24,7 @@ async function blockLocalStorage(page: Page) {
 }
 
 test.describe('localStorage が遮断された環境', () => {
-  test('検索結果のお気に入りボタンを押してもエラーにならず、保存済みとも表示しない', async ({ page }) => {
+  test('検索結果のお気に入りボタンを押してもエラーにならず、保存できないことを知らせる', async ({ page }) => {
     const pageErrors: string[] = []
     page.on('pageerror', (e) => pageErrors.push(e.message))
     await blockLocalStorage(page)
@@ -39,6 +39,7 @@ test.describe('localStorage が遮断された環境', () => {
 
     await page.getByRole('button', { name: 'お気に入りに追加' }).click()
 
+    await expect(page.getByText('この環境ではお気に入りを保存できません')).toBeVisible()
     await expect(page.getByRole('button', { name: 'お気に入りに追加' })).toBeVisible()
     expect(pageErrors).toEqual([])
   })
