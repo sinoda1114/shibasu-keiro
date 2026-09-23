@@ -1,4 +1,5 @@
 import { checkOdptUpdate, importOdpt } from './import'
+import { resolveOdptConsumerKey } from './consumer-key'
 import { validateImport } from '../gtfs/validate'
 import { activateVersion } from '../gtfs/activate'
 import { cleanupOldVersions } from '../gtfs/cleanup'
@@ -6,18 +7,7 @@ import { cleanupOldVersions } from '../gtfs/cleanup'
 const PROVIDER_ID = 'sotetsu_bus'
 
 async function main(): Promise<void> {
-  // ODPT_CONSUMER_KEY が未設定の場合 YOKOHAMA_GTFS_URL から抽出するフォールバック
-  let consumerKey = process.env.ODPT_CONSUMER_KEY
-  if (!consumerKey) {
-    const yokohamaUrl = process.env.YOKOHAMA_GTFS_URL
-    if (yokohamaUrl) {
-      try {
-        consumerKey = new URL(yokohamaUrl).searchParams.get('acl:consumerKey') ?? undefined
-      } catch {
-        // URL parse error は無視
-      }
-    }
-  }
+  const consumerKey = resolveOdptConsumerKey().key
   if (!consumerKey) throw new Error('ODPT_CONSUMER_KEY が設定されていません（または YOKOHAMA_GTFS_URL からキーを取得できませんでした）')
   if (!process.env.TURSO_DATABASE_URL) throw new Error('TURSO_DATABASE_URL is not set')
 

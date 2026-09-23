@@ -39,6 +39,28 @@ export function isOdptFilesUrl(url: string): boolean {
 }
 
 /**
+ * ODPT が認証エラー（401 / 403）を返したときのエラー。キーの失効・停止に気付けるよう、
+ * 原因と更新すべき場所を書く。URL にはキーが入るので、URL もキーも含めない。
+ */
+export function odptAuthError(status: number, keyLocation: string): Error {
+  return new Error(
+    `ODPT が認証エラー（HTTP ${status}）を返しました。API キー（acl:consumerKey）が無効か、停止されている可能性があります。` +
+    `ODPT の開発者サイトでキーを確認・再発行し、${keyLocation} を更新してください。`
+  )
+}
+
+export function isOdptAuthFailure(status: number): boolean {
+  return status === 401 || status === 403
+}
+
+/** キーを置いている場所。GitHub Actions では Secret、手元では .env.local */
+export function odptKeyLocation(envName: string): string {
+  return process.env.GITHUB_ACTIONS === 'true' ? `GitHub の Secret ${envName}` : `.env.local の ${envName}`
+}
+
+const MONTHS_TO_TRY = 6
+
+/**
  * ODPT Files URL に date パラメーターを付けてリクエストし、
  * 302 リダイレクト先の Azure Blob URL を返す（最大6ヶ月遡る）。
  *
@@ -55,16 +77,25 @@ export async function resolveOdptUrl(
   const baseUrl = `${parsed.origin}${parsed.pathname}`
 
   const now = new Date()
-  for (let i = 0; i < 6; i++) {
+  // その月のファイルが無いときも 403 が返りうるので、さかのぼりは最後まで続ける。
+  // ODPT の Files API（GTFS の ZIP）を使うのは横浜市営バスだけで、URL は YOKOHAMA_GTFS_URL から来る
+  const keyLocation = odptKeyLocation('YOKOHAMA_GTFS_URL')
+  let forbiddenMonths = 0
+  for (let i = 0; i < MONTHS_TO_TRY; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}01`
     const tryUrl = `${baseUrl}?date=${date}&acl:consumerKey=${token}`
 
     const r = await fetch(tryUrl, { redirect: 'manual' })
+    // 401 は認証の失敗以外を意味しないので、その時点で止める
+    if (r.status === 401) throw odptAuthError(401, keyLocation)
+    if (r.status === 403) forbiddenMonths++
     if (r.status === 302) {
       const location = r.headers.get('location')
       if (location) return { blobUrl: location, date }
     }
   }
+  // 403 は未公開の月でも返りうるので、全月が 403 のときだけキーの問題とみなす
+  if (forbiddenMonths === MONTHS_TO_TRY) throw odptAuthError(403, keyLocation)
   return null
 }

@@ -49,6 +49,7 @@ describe('resolveOdptUrl', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('302 レスポンスの Location ヘッダーから blobUrl と date を返すこと', async () => {
@@ -67,6 +68,44 @@ describe('resolveOdptUrl', () => {
     expect(result?.blobUrl).toBe('https://blob.example.com/Bus-20260601.zip?sas=xxx')
     // date は呼び出し時の月に依存するので、形式だけ確認
     expect(result?.date).toMatch(/^\d{8}$/)
+  })
+
+  const TOKEN_URL = 'https://api.odpt.org/api/v4/files/odpt/YokohamaMunicipal/Bus.zip?acl:consumerKey=SECRET_TEST_TOKEN'
+
+  it('どの月も 403 なら、キーが原因と分かる文言で止まり、キーの値は含めないこと（CI では GitHub の Secret を案内）', async () => {
+    vi.stubEnv('GITHUB_ACTIONS', 'true')
+    vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
+    const error = await resolveOdptUrl(TOKEN_URL).catch((e: Error) => e)
+    expect(String(error)).toMatch(/認証エラー（HTTP 403）[\s\S]*GitHub の Secret YOKOHAMA_GTFS_URL/)
+    expect(String(error)).not.toMatch(/SECRET_TEST_TOKEN/)
+  })
+
+  it('手元で実行したときは .env.local を案内すること', async () => {
+    vi.stubEnv('GITHUB_ACTIONS', '')
+    vi.mocked(fetch).mockResolvedValue({ status: 403, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).rejects.toThrow(/\.env\.local の YOKOHAMA_GTFS_URL/)
+  })
+
+  it('一部の月だけ 403（未公開の月）で残りが 404 なら、キーの問題とせず null を返すこと', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 403, headers: new Headers() } as unknown as Response)
+      .mockResolvedValue({ status: 404, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).resolves.toBeNull()
+  })
+
+  it('401 は 1 か月だけでも認証エラーとして止めること（401 は未公開の月を意味しない）', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 401, headers: new Headers() } as unknown as Response)
+      .mockResolvedValue({ status: 404, headers: new Headers() } as unknown as Response)
+    await expect(resolveOdptUrl(TOKEN_URL)).rejects.toThrow(/認証エラー（HTTP 401）/)
+  })
+
+  it('ある月が 403 でも、さかのぼった月で 302 が返れば取得できること', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ status: 403, headers: new Headers() } as unknown as Response)
+      .mockResolvedValueOnce({ status: 302, headers: new Headers({ location: 'https://blob.example.com/b.zip' }) } as unknown as Response)
+    const result = await resolveOdptUrl(TOKEN_URL)
+    expect(result?.blobUrl).toBe('https://blob.example.com/b.zip')
   })
 
   it('6ヶ月分すべて 302 でなければ null を返すこと', async () => {
