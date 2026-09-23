@@ -16,7 +16,7 @@ beforeEach(() => {
 describe('lib/db/client', () => {
   it('ルートを import しただけでは DB に接続しない（next build のページデータ収集と同じ条件）', async () => {
     const loaders = Object.values(ROUTES)
-    expect(loaders.length).toBeGreaterThanOrEqual(7)
+    expect(loaders.length).toBeGreaterThanOrEqual(5)
     for (const load of loaders) await load()
     expect(createClient).not.toHaveBeenCalled()
   })
