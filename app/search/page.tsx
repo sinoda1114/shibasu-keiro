@@ -293,7 +293,9 @@ function SearchResultContent() {
             color="orange"
             radius="md"
           >
-            現在地から500m以内に{to}への直通便がありません。ダイヤ区分や時刻を変えてお試しください。
+            {missingProviders.length > 0
+              ? `現在地から500m以内に${to}への直通便がありません（${searchedProviderNames}のデータで検索）。ダイヤ区分や時刻を変えてお試しください。`
+              : `現在地から500m以内に${to}への直通便がありません。ダイヤ区分や時刻を変えてお試しください。`}
           </Alert>
         )}
         {!loading && !error && isNearbyMode && nearbyResults.length > 0 && (

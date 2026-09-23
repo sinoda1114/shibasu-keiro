@@ -77,4 +77,18 @@ describe('検索画面: 時刻表データが無い事業者の注意書き', ()
     expect(await screen.findByText(NOTICE)).toBeInTheDocument()
     expect(screen.getByText('近くにバス停が見つかりませんでした')).toBeInTheDocument()
   })
+
+  it('近くから探すで結果が空かつ一部の事業者のデータが無いとき、「直通便がありません」を検索できた事業者に限って書く', async () => {
+    mockApi({ success: true, data: [], date: '20260924', missingProviders: ['sotetsu_bus'] })
+    renderPage('lat=35.4667&lon=139.6223&to=高島町&area=yokohama')
+
+    expect(await screen.findByText(/500m以内に高島町への直通便がありません（横浜市営バスのデータで検索）/)).toBeInTheDocument()
+  })
+
+  it('近くから探すで欠けが無ければ、「直通便がありません」の文言はこれまでどおり', async () => {
+    mockApi({ success: true, data: [], date: '20260924', missingProviders: [] })
+    renderPage('lat=35.4667&lon=139.6223&to=高島町&area=yokohama')
+
+    expect(await screen.findByText('現在地から500m以内に高島町への直通便がありません。ダイヤ区分や時刻を変えてお試しください。')).toBeInTheDocument()
+  })
 })

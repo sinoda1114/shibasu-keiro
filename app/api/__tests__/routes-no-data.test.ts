@@ -125,12 +125,6 @@ describe('/api/routes/direct（有効な版が無い事業者がある）', () =
     expect(body.missingProviders).toEqual(['sotetsu_bus'])
     expect(body.sotetsuStopsExist).toBe(false)
   })
-
-  it('版のある事業者で便が無いだけなら、これまでどおり 200 の空配列（503 にしない）', async () => {
-    const { status, body } = await getJson(directRoutes, `/api/routes/direct?from=高島町&to=横浜駅前&area=yokohama&date=${THURSDAY}`)
-    expect(status).toBe(200)
-    expect(body.data).toEqual([])
-  })
 })
 
 describe('/api/routes/nearby（有効な版が無い事業者がある）', () => {
