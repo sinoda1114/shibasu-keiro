@@ -15,10 +15,12 @@ import {
   reverseFavorite,
   type FavoriteRoute,
 } from '@/lib/favorites/local-storage'
+import { useIsHydrated } from '@/lib/use-is-hydrated'
 import { FavoriteCard } from './FavoriteCard'
 
 export function FavoritesList() {
   const router = useRouter()
+  const isHydrated = useIsHydrated()
   const [routes, setRoutes] = useState<FavoriteRoute[]>(() => getFavorites())
 
   const handleReverse = useCallback((id: string) => {
@@ -49,6 +51,9 @@ export function FavoritesList() {
     },
     [router]
   )
+
+  // サーバー描画ではお気に入りが常に空になる。「まだありません」を一瞬見せないよう、確定するまで何も出さない
+  if (!isHydrated) return null
 
   return (
     <Stack gap="md">
