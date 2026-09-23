@@ -198,8 +198,7 @@ function SearchResultContent() {
                 onClick={() => {
                   if (isFavorited) {
                     const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
-                    if (target) removeFavorite(target.id)
-                    setIsFavorited(false)
+                    if (!target || removeFavorite(target.id)) setIsFavorited(false)
                   } else {
                     const providerCounts = new Map<string, number>()
                     for (const r of results) {
@@ -207,8 +206,7 @@ function SearchResultContent() {
                     }
                     const topProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
                     const providerLabel = topProvider ?? areaConfig.providerDisplayNames[0]
-                    addFavorite(from, to, area, providerLabel)
-                    setIsFavorited(true)
+                    if (addFavorite(from, to, area, providerLabel)) setIsFavorited(true)
                   }
                 }}
                 style={{ flexShrink: 0 }}

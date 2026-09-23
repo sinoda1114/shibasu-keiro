@@ -1,3 +1,5 @@
+import { writeLocalStorage } from '@/lib/safe-storage'
+
 export interface FavoriteRoute {
   id: string
   areaId: string
@@ -48,7 +50,7 @@ export function addFavorite(
   to: string,
   areaId: string,
   providerDisplayName: string
-): FavoriteRoute {
+): FavoriteRoute | null {
   const favorites = getFavorites()
   const newItem: FavoriteRoute = {
     id: generateId(),
@@ -59,21 +61,20 @@ export function addFavorite(
     createdAt: new Date().toISOString(),
   }
   const updated = [newItem, ...favorites]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-  return newItem
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated)) ? newItem : null
 }
 
-export function removeFavorite(id: string): void {
+export function removeFavorite(id: string): boolean {
   const favorites = getFavorites()
   const updated = favorites.filter((f) => f.id !== id)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated))
 }
 
-export function reverseFavorite(id: string): void {
+export function reverseFavorite(id: string): boolean {
   const favorites = getFavorites()
   const updated = favorites.map((f) => {
     if (f.id !== id) return f
     return { ...f, fromStopName: f.toStopName, toStopName: f.fromStopName }
   })
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  return writeLocalStorage(STORAGE_KEY, JSON.stringify(updated))
 }
