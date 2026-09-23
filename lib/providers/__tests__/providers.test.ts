@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PROVIDER_CONFIGS, providerIdToDisplayName } from '../providers'
+import { AREA_CONFIGS, PROVIDER_CONFIGS, providerIdToDisplayName } from '../providers'
 
 describe('providerIdToDisplayName', () => {
   it('PROVIDER_CONFIGS の displayName を返す', () => {
@@ -16,5 +16,14 @@ describe('providerIdToDisplayName', () => {
 
   it('未知の事業者は providerId をそのまま返す', () => {
     expect(providerIdToDisplayName('unknown_bus')).toBe('unknown_bus')
+  })
+})
+
+describe('AREA_CONFIGS', () => {
+  it('各エリアの事業者はすべて PROVIDER_CONFIGS に定義がある（表示名は PROVIDER_CONFIGS から引く）', () => {
+    const ids = new Set(PROVIDER_CONFIGS.map((p) => p.id))
+    for (const area of AREA_CONFIGS) {
+      for (const id of area.providerIds) expect(ids.has(id)).toBe(true)
+    }
   })
 })

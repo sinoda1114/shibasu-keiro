@@ -213,7 +213,7 @@ function SearchResultContent() {
                       providerCounts.set(r.providerDisplayName, (providerCounts.get(r.providerDisplayName) ?? 0) + 1)
                     }
                     const topProvider = [...providerCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
-                    const providerLabel = topProvider ?? areaConfig.providerDisplayNames[0]
+                    const providerLabel = topProvider ?? providerIdToDisplayName(firstProviderId)
                     if (addFavorite(from, to, area, providerLabel)) setIsFavorited(true)
                     else notifyFavoriteUnsaved()
                   }
