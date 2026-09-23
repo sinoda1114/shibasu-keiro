@@ -27,6 +27,9 @@ export async function GET(req: NextRequest) {
   if (!stopName) {
     return NextResponse.json({ success: false, error: 'stopName は必須です' }, { status: 400 })
   }
+  if (dateParam === null && legacyDayType !== null && !isDayType(legacyDayType)) {
+    return NextResponse.json({ success: false, error: 'dayType は weekday / saturday / holiday のいずれかで指定してください' }, { status: 400 })
+  }
   // 存在しない日付を曜日の計算で別の日に読み替えて黙って返さない
   if (!isYYYYMMDD(dateStr)) {
     return NextResponse.json({ success: false, error: 'date は YYYYMMDD 形式の実在する日付で指定してください' }, { status: 400 })

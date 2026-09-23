@@ -276,6 +276,11 @@ describe('/api/timetable（実 DB）', () => {
     expect(entriesOf(await res.json())).toEqual([{ hour: 10, minutes: [0] }])
   })
 
+  it('date が無く dayType が未知の値なら 400（黙って今日の時刻表を返さない）', async () => {
+    const { status } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&provider=yokohama_city_bus&dayType=bogus')
+    expect(status).toBe(400)
+  })
+
   it('date を指定した応答はキャッシュさせる（運行が無い日の空の応答も）', async () => {
     const running = await getResponse(timetable, url('横浜駅前', 'yokohama_city_bus', THURSDAY))
     expect(running.headers.get('Cache-Control')).toContain('s-maxage=')
