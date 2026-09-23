@@ -19,10 +19,23 @@ function collectHydrationErrors(page: Page): string[] {
 
 type DayType = 'weekday' | 'saturday' | 'holiday'
 
+// アプリは今日の曜日区分と現在時刻を JST で決める。CI のランナーは UTC なので、期待値も JST で出す
+function jstParts(date: Date): { weekday: string; hh: string; mm: string } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return { weekday: get('weekday'), hh: get('hour'), mm: get('minute') }
+}
+
 function dayTypeOf(date: Date): DayType {
-  const day = date.getDay()
-  if (day === 0) return 'holiday'
-  if (day === 6) return 'saturday'
+  const { weekday } = jstParts(date)
+  if (weekday === 'Sun') return 'holiday'
+  if (weekday === 'Sat') return 'saturday'
   return 'weekday'
 }
 
@@ -76,8 +89,7 @@ test.describe('ハイドレーション不一致', () => {
 
     await page.goto('/?area=nagoya')
 
-    const hh = String(browserNow.getHours()).padStart(2, '0')
-    const mm = String(browserNow.getMinutes()).padStart(2, '0')
+    const { hh, mm } = jstParts(browserNow)
     await expect(page.getByRole('button', { name: `${hh}:${mm}` })).toBeVisible()
     const dayTypeLabel = { weekday: '平日', saturday: '土曜', holiday: '休日' }[dayTypeOf(browserNow)]
     await expect(page.getByRole('radio', { name: dayTypeLabel })).toBeChecked()
