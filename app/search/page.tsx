@@ -24,6 +24,7 @@ import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { NearbyResultGroup } from '@/components/search/NearbyResultGroup'
 import { Suspense } from 'react'
 import type { NearbyStop } from '@/app/api/routes/nearby/route'
+import { useIsHydrated } from '@/lib/use-is-hydrated'
 
 interface DirectRouteResult {
   tripId: string
@@ -90,6 +91,14 @@ function calcRideMinutes(depSec: number, arrSec: number): number {
   return Math.round((arrSec - depSec) / 60)
 }
 
+interface SearchResponse {
+  key: string
+  results: DirectRouteResult[]
+  nearbyResults: NearbyStop[]
+  sotetsuStopsExist: boolean
+  error: string | null
+}
+
 function SearchResultContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -106,26 +115,38 @@ function SearchResultContent() {
   const areaConfig = getAreaConfig(area)
   const firstProviderId = areaConfig.providerIds[0]
 
-  const [results, setResults] = useState<DirectRouteResult[]>([])
-  const [nearbyResults, setNearbyResults] = useState<NearbyStop[]>([])
-  // loading は「今の検索条件に対する応答が届いたか」から導く。条件が変われば自動で読み込み中に戻り、
-  // 中断されたリクエスト（StrictMode の再実行や条件変更）は完了扱いにならない
+  // 応答は検索条件のキーと一緒に持ち、今の条件のものだけを使う。同じページのまま条件が変わっても、
+  // 前の条件の結果やエラーを使わない（古い結果の社名でお気に入りを保存しない）。loading も
+  // 「今の条件の応答があるか」で決まり、中断されたリクエスト（StrictMode の再実行や条件変更）は応答にならない
   const requestKey = JSON.stringify([from, to, lat, lon, isNearbyMode, dayType, area])
   const willFetch = isNearbyMode ? !!(lat && lon && to) : !!(from && to)
-  const [settledKey, setSettledKey] = useState<string | null>(null)
-  const loading = willFetch && settledKey !== requestKey
-  const [error, setError] = useState<string | null>(null)
-  const [sotetsuStopsExist, setSotetsuStopsExist] = useState(false)
-  const [isFavorited, setIsFavorited] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
-  })
+  const [response, setResponse] = useState<SearchResponse | null>(null)
+  const current = response?.key === requestKey ? response : null
+  const loading = willFetch && !current
+  const results = current?.results ?? []
+  const nearbyResults = current?.nearbyResults ?? []
+  const sotetsuStopsExist = current?.sotetsuStopsExist ?? false
+  const error = current?.error ?? null
+
+  // お気に入り済みかどうかも区間のキーと一緒に持つ。区間が変われば保存領域から読み直す。
+  // localStorage はサーバーに無いので、ハイドレーションが終わるまでは未登録として描く
+  const isHydrated = useIsHydrated()
+  const favoriteKey = JSON.stringify([from, to, area])
+  const [favoritedOverride, setFavoritedOverride] = useState<{ key: string; value: boolean } | null>(null)
+  const isFavorited = favoritedOverride?.key === favoriteKey
+    ? favoritedOverride.value
+    : isHydrated && getFavorites().some(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
+  const setIsFavorited = (value: boolean) => setFavoritedOverride({ key: favoriteKey, value })
 
   useEffect(() => {
     const date = getDayTypeDate(dayType)
     const controller = new AbortController()
-    const finishLoading = () => {
-      if (!controller.signal.aborted) setSettledKey(requestKey)
+    const settle = (partial: Partial<Omit<SearchResponse, 'key'>>) => {
+      if (controller.signal.aborted) return
+      setResponse({ key: requestKey, results: [], nearbyResults: [], sotetsuStopsExist: false, error: null, ...partial })
+    }
+    const onNetworkError = (err: unknown) => {
+      if (err instanceof Error && err.name !== 'AbortError') settle({ error: '通信エラーが発生しました' })
     }
 
     if (isNearbyMode && to) {
@@ -135,13 +156,10 @@ function SearchResultContent() {
       )
         .then((r) => r.json())
         .then((json: { success: boolean; data?: NearbyStop[]; error?: string }) => {
-          if (json.success) setNearbyResults(json.data ?? [])
-          else setError(json.error ?? '検索に失敗しました')
+          if (json.success) settle({ nearbyResults: json.data ?? [] })
+          else settle({ error: json.error ?? '検索に失敗しました' })
         })
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
-        })
-        .finally(finishLoading)
+        .catch(onNetworkError)
     } else if (from && to) {
       fetch(
         `/api/routes/direct?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}&area=${encodeURIComponent(area)}`,
@@ -149,17 +167,10 @@ function SearchResultContent() {
       )
         .then((r) => r.json())
         .then((json: { success: boolean; data?: DirectRouteResult[]; error?: string; sotetsuStopsExist?: boolean }) => {
-          if (json.success) {
-            setResults(json.data ?? [])
-            setSotetsuStopsExist(json.sotetsuStopsExist ?? false)
-          } else {
-            setError(json.error ?? '検索に失敗しました')
-          }
+          if (json.success) settle({ results: json.data ?? [], sotetsuStopsExist: json.sotetsuStopsExist ?? false })
+          else settle({ error: json.error ?? '検索に失敗しました' })
         })
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.name !== 'AbortError') setError('通信エラーが発生しました')
-        })
-        .finally(finishLoading)
+        .catch(onNetworkError)
     }
 
     return () => controller.abort()
@@ -204,8 +215,8 @@ function SearchResultContent() {
                 radius="md"
                 leftSection={<IconStar size={rem(15)} fill={isFavorited ? 'currentColor' : 'none'} />}
                 aria-label={isFavorited ? 'お気に入りを解除' : 'お気に入りに追加'}
-                // 結果が届く前に追加すると実際の運行事業者ではなくエリア既定の社名で保存されてしまう
-                disabled={loading && !isFavorited}
+                // 結果が届く前やエラーのときは実際の運行事業者が分からず、エリア既定の社名で保存されてしまう
+                disabled={(loading || !!error) && !isFavorited}
                 onClick={() => {
                   if (isFavorited) {
                     const target = getFavorites().find(f => f.fromStopName === from && f.toStopName === to && f.areaId === area)
