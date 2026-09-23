@@ -41,12 +41,11 @@ interface DirectRouteResult {
   providerDisplayName: string
 }
 
-const DAY_TYPE_LABELS: Record<string, string> = {
+const DAY_TYPE_LABELS: Record<DayType, string> = {
   weekday: '平日',
   saturday: '土曜',
   holiday: '休日',
 }
-
 
 function timeToSeconds(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)

@@ -46,6 +46,7 @@ async function seed() {
   const weekdays = { monday: 1, tuesday: 1, wednesday: 1, thursday: 1, friday: 1, saturday: 0, sunday: 0 }
   await db.insert(gtfsCalendar).values([
     { id: 'c1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'WD', ...weekdays, startDate: '20260101', endDate: '20261231' },
+    { id: 'c4', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', serviceId: 'YSUN', monday: 0, tuesday: 0, wednesday: 0, thursday: 0, friday: 0, saturday: 0, sunday: 1, startDate: '20260101', endDate: '20261231' },
     { id: 'c2', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', serviceId: 'WD', ...weekdays, startDate: '20260101', endDate: '20261231' },
     { id: 'c3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', serviceId: 'HOL', monday: 0, tuesday: 0, wednesday: 0, thursday: 0, friday: 0, saturday: 0, sunday: 1, startDate: '20260101', endDate: '20261231' },
   ])
@@ -69,6 +70,7 @@ async function seed() {
   await db.insert(busTrips).values([
     { id: 't1', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', routeId: 'R1', serviceId: 'WD', tripHeadsign: '高島町', createdAt: NOW },
     { id: 't4', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', routeId: 'R1', serviceId: 'YHOL', tripHeadsign: '高島町', createdAt: NOW },
+    { id: 't5', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T3', routeId: 'R1', serviceId: 'YSUN', tripHeadsign: '高島町', createdAt: NOW },
     { id: 't2', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', routeId: 'RS', serviceId: 'WD', tripHeadsign: '梅の木', createdAt: NOW },
     { id: 't3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', routeId: 'RS', serviceId: 'HOL', tripHeadsign: '梅の木', createdAt: NOW },
   ])
@@ -77,6 +79,8 @@ async function seed() {
     { id: 'st2', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T1', stopId: 'B', arrivalTimeSeconds: hhmm(8, 20), departureTimeSeconds: hhmm(8, 20), stopSequence: 2, createdAt: NOW },
     { id: 'st7', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', stopId: 'A', arrivalTimeSeconds: hhmm(9, 0), departureTimeSeconds: hhmm(9, 0), stopSequence: 1, createdAt: NOW },
     { id: 'st8', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T2', stopId: 'B', arrivalTimeSeconds: hhmm(9, 20), departureTimeSeconds: hhmm(9, 20), stopSequence: 2, createdAt: NOW },
+    { id: 'st9', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T3', stopId: 'A', arrivalTimeSeconds: hhmm(10, 0), departureTimeSeconds: hhmm(10, 0), stopSequence: 1, createdAt: NOW },
+    { id: 'st10', providerId: 'yokohama_city_bus', gtfsVersionId: 'yc-active', tripId: 'T3', stopId: 'B', arrivalTimeSeconds: hhmm(10, 20), departureTimeSeconds: hhmm(10, 20), stopSequence: 2, createdAt: NOW },
     { id: 'st3', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'W', arrivalTimeSeconds: hhmm(8, 10), departureTimeSeconds: hhmm(8, 10), stopSequence: 1, createdAt: NOW },
     { id: 'st4', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S1', stopId: 'U', arrivalTimeSeconds: hhmm(8, 40), departureTimeSeconds: hhmm(8, 40), stopSequence: 2, createdAt: NOW },
     { id: 'st5', providerId: 'sotetsu_bus', gtfsVersionId: 'st-active', tripId: 'S2', stopId: 'W', arrivalTimeSeconds: hhmm(9, 10), departureTimeSeconds: hhmm(9, 10), stopSequence: 1, createdAt: NOW },
@@ -178,9 +182,11 @@ describe('/api/timetable（実 DB）', () => {
   })
 
   it('正しい dayType なら、その曜日区分の便を返す', async () => {
-    const { status, body } = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
-    expect(status).toBe(200)
-    // 横浜駅前の平日ダイヤは T1（8:00）だけ。休日ダイヤの T2（9:00）は含まない
-    expect(body.data).toEqual([expect.objectContaining({ entries: [{ hour: 8, minutes: [0] }] })])
+    // 横浜駅前の平日ダイヤは T1（8:00）、日曜の列のダイヤは T3（10:00）
+    const weekday = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=weekday&provider=yokohama_city_bus')
+    expect(weekday.status).toBe(200)
+    expect(weekday.body.data).toEqual([expect.objectContaining({ entries: [{ hour: 8, minutes: [0] }] })])
+    const holiday = await getJson(timetable, '/api/timetable?stopName=横浜駅前&dayType=holiday&provider=yokohama_city_bus')
+    expect(holiday.body.data).toEqual([expect.objectContaining({ entries: [{ hour: 10, minutes: [0] }] })])
   })
 })
