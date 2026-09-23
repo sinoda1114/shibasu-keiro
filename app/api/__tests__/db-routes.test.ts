@@ -13,7 +13,8 @@ import { GET as searchStops } from '@/app/api/stops/search/route'
 import { GET as directRoutes } from '@/app/api/routes/direct/route'
 
 // API ルートを実際の SQLite（マイグレーション適用済み）に対してモックなしで叩く。
-// E2E は API を page.route でモックしているため、クエリの正しさはここでしか守られていない。
+// 対象は /api/stops/search と /api/routes/direct。E2E は API を page.route でモックしているため、
+// この 2 ルートのクエリはここで守る。nearby / timetable / trip-stops / admin は未検証のまま。
 
 const THURSDAY = '20260924'
 const FRIDAY_SUSPENDED = '20260925'
