@@ -9,7 +9,7 @@ import {
   secondsToHHMM,
 } from '@/lib/gtfs/service-resolver'
 import { getAreaConfig, providerIdToDisplayName } from '@/lib/providers/providers'
-import { formatJstYYYYMMDD } from '@/lib/jst'
+import { formatJstYYYYMMDD, isYYYYMMDD } from '@/lib/jst'
 import { collectProviderResults } from '@/app/api/routes/provider-results'
 
 export interface DirectRouteResult {
@@ -170,9 +170,10 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  if (!/^\d{8}$/.test(dateStr)) {
+  // 存在しない日付を曜日の計算で別の日に読み替えて黙って返さない（時刻表と同じ判定）
+  if (!isYYYYMMDD(dateStr)) {
     return NextResponse.json(
-      { success: false, error: 'date は YYYYMMDD 形式で指定してください' },
+      { success: false, error: 'date は YYYYMMDD 形式の実在する日付で指定してください' },
       { status: 400 }
     )
   }

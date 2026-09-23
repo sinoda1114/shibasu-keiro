@@ -75,19 +75,25 @@ export function TimetableController({ stopName, provider, initialHeadsign }: Tim
     const serviceDate = getServiceDate(dayType)
     dispatch({ type: 'FETCH_START', date: serviceDate })
 
+    // 区分を切り替えたら前の要求は中断し、遅れて届いた応答で今の日付の表示を上書きしない
+    const controller = new AbortController()
     const params = new URLSearchParams({ stopName, date: serviceDate, provider })
-    fetch(`/api/timetable?${params}`)
+    fetch(`/api/timetable?${params}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((json: { success: boolean; error?: string; data: TimetableDirection[] }) => {
+        if (controller.signal.aborted) return
         if (!json.success) throw new Error(json.error ?? 'データ取得に失敗しました')
         dispatch({ type: 'FETCH_SUCCESS', directions: json.data, initialHeadsign })
       })
-      .catch((e: unknown) =>
+      .catch((e: unknown) => {
+        // 中断による AbortError はエラーとして出さない
+        if (controller.signal.aborted) return
         dispatch({
           type: 'FETCH_ERROR',
           message: e instanceof Error ? e.message : 'エラーが発生しました',
-        }),
-      )
+        })
+      })
+    return () => controller.abort()
   }, [stopName, dayType, provider])
 
   const selectedDirection = directions[Number(directionIndex)] ?? directions[0]
