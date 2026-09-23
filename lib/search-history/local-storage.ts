@@ -25,5 +25,9 @@ export function saveSearchHistory(from: string, to: string): void {
   const history = getSearchHistory()
   const filtered = history.filter(h => !(h.from === from && h.to === to))
   const updated = [{ from, to, searchedAt: new Date().toISOString() }, ...filtered].slice(0, MAX_HISTORY)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+  } catch {
+    // ストレージ遮断・容量超過時は履歴を残さない
+  }
 }

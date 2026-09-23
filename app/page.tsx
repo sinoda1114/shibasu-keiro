@@ -47,11 +47,20 @@ function getNowTime(): string {
   return `${hh}:${mm}`
 }
 
-function readLastArea(): string | null {
+// ストレージが遮断された環境（Safari の Cookie 全遮断など）では localStorage への参照自体が SecurityError を投げる
+function readLocalStorage(key: string): string | null {
   try {
-    return localStorage.getItem(LAST_AREA_KEY)
+    return localStorage.getItem(key)
   } catch {
     return null
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // 保存できなくても操作自体は続ける
   }
 }
 
@@ -279,7 +288,7 @@ function SearchPageContent() {
 
   const isHydrated = useIsHydrated()
   const area = searchParams.get('area') ??
-    (isHydrated ? readLastArea() : null) ?? DEFAULT_AREA_ID
+    (isHydrated ? readLocalStorage(LAST_AREA_KEY) : null) ?? DEFAULT_AREA_ID
 
   const [searchMode, setSearchMode] = useState<SearchMode>('stop')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -297,7 +306,7 @@ function SearchPageContent() {
   const [stopFavorites, setStopFavorites] = useState<StopFavorite[]>(() => getStopFavorites())
 
   const handleAreaChange = (newArea: string) => {
-    localStorage.setItem(LAST_AREA_KEY, newArea)
+    writeLocalStorage(LAST_AREA_KEY, newArea)
     setFromStop('')
     setToStop('')
     const params = new URLSearchParams(searchParams.toString())
@@ -425,7 +434,7 @@ function SearchPageContent() {
     })
     saveSearchHistory(fromStop, toStop)
     setHistory(getSearchHistory())
-    localStorage.setItem(LAST_FROM_STOP_KEY, fromStop)
+    writeLocalStorage(LAST_FROM_STOP_KEY, fromStop)
     router.push(`/search?${params.toString()}`)
   }
 
