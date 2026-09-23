@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getJstDayType, getJstTime } from '../jst'
+import { getJstDayType, getJstTime, getServiceDate } from '../jst'
 
 describe('getJstDayType', () => {
   it('UTC では金曜でも JST で土曜なら saturday', () => {
@@ -14,6 +14,22 @@ describe('getJstDayType', () => {
     expect(getJstDayType(new Date('2026-09-27T15:00:00Z'))).toBe('weekday')
   })
 
+  it('平日の祝日は holiday（2026-10-12 スポーツの日・月曜）', () => {
+    expect(getJstDayType(new Date('2026-10-12T03:00:00+09:00'))).toBe('holiday')
+  })
+
+  it('UTC では前日でも JST で祝日なら holiday（2026-09-22 国民の休日の 0:30）', () => {
+    expect(getJstDayType(new Date('2026-09-21T15:30:00Z'))).toBe('holiday')
+  })
+
+  it('土曜の祝日は休日ダイヤに合わせて holiday（2028-04-29 昭和の日・土曜）', () => {
+    expect(getJstDayType(new Date('2028-04-29T12:00:00+09:00'))).toBe('holiday')
+  })
+
+  it('祝日の翌日の平日は weekday（2026-10-13）', () => {
+    expect(getJstDayType(new Date('2026-10-13T12:00:00+09:00'))).toBe('weekday')
+  })
+
   it('JST 金曜 23:59 は weekday', () => {
     expect(getJstDayType(new Date('2026-09-25T14:59:00Z'))).toBe('weekday')
   })
@@ -26,5 +42,31 @@ describe('getJstTime', () => {
 
   it('日付をまたいでも 0〜23 時で返す', () => {
     expect(getJstTime(new Date('2026-09-26T15:30:00Z'))).toEqual({ hour: 0, minute: 30 })
+  })
+})
+
+describe('getServiceDate（曜日区分から検索に使う日付を選ぶ）', () => {
+  const at = (iso: string) => new Date(`${iso}T12:00:00+09:00`)
+
+  it('今日がその区分なら今日を返す（平日の祝日に休日を選ぶと当日。祝日の例外を当日の日付で引ける）', () => {
+    expect(getServiceDate('holiday', at('2026-10-12'))).toBe('20261012')
+    expect(getServiceDate('weekday', at('2026-10-13'))).toBe('20261013')
+    expect(getServiceDate('saturday', at('2026-10-17'))).toBe('20261017')
+  })
+
+  it('今日が違う区分なら、その区分に当たる直近の日を返す（祝日は平日・土曜として選ばない）', () => {
+    expect(getServiceDate('weekday', at('2026-10-12'))).toBe('20261013')
+    expect(getServiceDate('holiday', at('2026-10-13'))).toBe('20261018')
+  })
+
+  it('平日に休日を選んだら直近の祝日ではなく次の日曜（元日などの特別な日を選ばない）', () => {
+    expect(getServiceDate('holiday', at('2026-12-28'))).toBe('20270103')
+    expect(getServiceDate('holiday', at('2026-11-02'))).toBe('20261108')
+    expect(getServiceDate('weekday', at('2026-09-19'))).toBe('20260924')
+    expect(getServiceDate('saturday', at('2028-04-28'))).toBe('20280506')
+  })
+
+  it('JST の日付で判定する（UTC では前日の 15:30 でも JST では祝日当日）', () => {
+    expect(getServiceDate('holiday', new Date('2026-10-11T15:30:00Z'))).toBe('20261012')
   })
 })

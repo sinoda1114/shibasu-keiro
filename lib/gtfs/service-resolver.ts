@@ -1,6 +1,8 @@
 import { and, eq, gte, lte } from 'drizzle-orm'
 import { getDb } from '../db/client'
 import { gtfsVersions, gtfsCalendar, gtfsCalendarDates } from '../db/schema'
+import { isJpHoliday } from '../jp-holidays'
+import { PROVIDER_CONFIGS } from '../providers/providers'
 
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
 
@@ -36,6 +38,16 @@ export async function getActiveVersionId(providerId: string): Promise<string | n
   return value
 }
 
+// 相鉄バス（ODPT から合成）は平日・土曜・休日の 3 種の calendar だけで、祝日の例外を持たない。
+// データの形から推測せず、事業者の定義で決める（無関係な例外が 1 行入っても判定が変わらないように）
+function holidaysInCalendarDates(providerId: string): boolean {
+  return PROVIDER_CONFIGS.find((p) => p.id === providerId)?.holidaysInCalendarDates ?? true
+}
+
+function isHolidayDate(dateStr: string): boolean {
+  return isJpHoliday(Number(dateStr.slice(0, 4)), Number(dateStr.slice(4, 6)), Number(dateStr.slice(6, 8)))
+}
+
 /**
  * 指定日付に有効な service_id 集合を解決する。
  * calendar_dates の例外（追加/削除）を calendar の曜日判定に重ねる。
@@ -50,7 +62,10 @@ export async function resolveServiceIds(
   const cached = serviceIdsCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return cached.value
 
-  const dowCol = getDowColumn(dateStr)
+  // 祝日を例外で表さない事業者では、平日・土曜の祝日を日曜のダイヤとして扱う（祝日は休日ダイヤで走る）
+  const dowCol = isHolidayDate(dateStr) && !holidaysInCalendarDates(providerId)
+    ? 'sunday'
+    : getDowColumn(dateStr)
 
   // 1. calendar から全 service_id を取得し、曜日カラムで JS 側フィルタ
   const calRows = await getDb()

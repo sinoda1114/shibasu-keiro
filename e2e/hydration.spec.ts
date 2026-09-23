@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { getJstDayType, type DayType } from '../lib/jst'
 
 const HISTORY_KEY = 'shibasu_keiro_search_history'
 const FAVORITES_KEY = 'shibasu_keiro_stop_favorites_v2'
@@ -17,13 +18,10 @@ function collectHydrationErrors(page: Page): string[] {
   return errors
 }
 
-type DayType = 'weekday' | 'saturday' | 'holiday'
-
 // アプリは今日の曜日区分と現在時刻を JST で決める。CI のランナーは UTC なので、期待値も JST で出す
-function jstParts(date: Date): { weekday: string; hh: string; mm: string } {
+function jstTime(date: Date): { hh: string; mm: string } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Tokyo',
-    weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -33,14 +31,12 @@ function jstParts(date: Date): { weekday: string; hh: string; mm: string } {
     if (value === undefined) throw new Error(`JST の ${type} を取り出せませんでした`)
     return value
   }
-  return { weekday: get('weekday'), hh: get('hour'), mm: get('minute') }
+  return { hh: get('hour'), mm: get('minute') }
 }
 
+// 曜日区分はアプリと同じ関数で出す。曜日だけで出すと、ずらした先が平日の祝日の日に食い違って落ちる
 function dayTypeOf(date: Date): DayType {
-  const { weekday } = jstParts(date)
-  if (weekday === 'Sun') return 'holiday'
-  if (weekday === 'Sat') return 'saturday'
-  return 'weekday'
+  return getJstDayType(date)
 }
 
 // サーバーと時刻も曜日区分も食い違う日時。テストランナーと dev サーバーは同じマシンで動く
@@ -93,7 +89,7 @@ test.describe('ハイドレーション不一致', () => {
 
     await page.goto('/?area=nagoya')
 
-    const { hh, mm } = jstParts(browserNow)
+    const { hh, mm } = jstTime(browserNow)
     await expect(page.getByRole('button', { name: `${hh}:${mm}` })).toBeVisible()
     const dayTypeLabel = { weekday: '平日', saturday: '土曜', holiday: '休日' }[dayTypeOf(browserNow)]
     await expect(page.getByRole('radio', { name: dayTypeLabel })).toBeChecked()
